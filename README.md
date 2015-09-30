@@ -2,10 +2,21 @@
 
 Command line tools for interacting with your Jut instance.
 
+## Requirements
+
+ * Python 2.7.9+
+
+We ask for 2.7.9+ because otherwise you may run into the following 
+security message:
+```
+InsecurePlatformWarning: A true SSLContext object is not available. 
+This prevents urllib3 from configuring SSL appropriately and may cause certain SSL connections to fail. 
+For more information, see https://urllib3.readthedocs.org/en/latest/security.html#insecureplatformwarning.
+```
 
 ## Installation
 
-Installation is as easy as:
+Installation is as easy as**(*)**:
 
 ```
 pip install jut-tools
@@ -17,12 +28,12 @@ or
 easy_install jut-tools
 ```
 
+
 That will get you the latest official build from pypi but if you want to use
 the bleeding master code you can also use:
 
-```
-pip install -e git+git://github.com/jut-io/jut-python-tools.git#egg=jut
-```
+**(*)** You may need to use `sudo` with the above commands if you are not using a
+virtualenv or don't have a userspace python installation.
 
 ## Configuration
 
