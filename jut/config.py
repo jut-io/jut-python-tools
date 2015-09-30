@@ -41,7 +41,7 @@ def print_configurations():
 
     """
     if not is_configured():
-        raise Exception('No configurations available, please run: jut configure')
+        raise Exception('No configurations available, please run: `jut config add`')
 
     info('Currently jut configurations:')
     index = 0
@@ -130,7 +130,7 @@ def get_default():
     """
 
     if not is_configured():
-        raise Exception('No configurations available, please run `jut configure`')
+        raise Exception('No configurations available, please run `jut config add`')
 
     for configuration in _CONFIG.sections():
         if _CONFIG.has_option(configuration, 'default'):
@@ -174,7 +174,7 @@ def is_default(name=None, index=None):
     """
 
     if not is_configured():
-        raise Exception('No configurations available, please run `jut configure`')
+        raise Exception('No configurations available, please run `jut config add`')
 
     count = 1
     for configuration in _CONFIG.sections():
