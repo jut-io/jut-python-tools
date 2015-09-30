@@ -29,7 +29,7 @@ setup(
     keywords=[''],
 
     packages=find_packages(exclude=['tests']),
-    license='Apache 2.0 License',
+    license='MIT License',
     description='jut command lines tools',
 
     # pypi doesn't support markdown so we can't push the README.md as is
