@@ -1,6 +1,28 @@
 # jut-tools
 
 Command line tools for interacting with your Jut instance.  
+
+# Table of Contents
+
+  * [Requirements](#requirements)
+  * [Installation](#installation)
+  * [Upgrading](#upgrading)
+  * [Config Command](#config-command)
+    * [First time configuration](#first-time-configuration)
+    * [Using multiple configurations](#using-multiple-configurations)
+    * [Removing configurations](#removing-configurations)
+  * [Upload Command](#upload-command)
+    * [Upload a JSON file](#upload-a-json-file)
+    * [Uploading a directory of JSON files](#uploading-a-directory-of-json-files)
+  * [Run Command](#run-command)
+    * [Getting JSON data out of Jut](#getting-json-data-out-of-jut)
+    * [Getting a list of things out of Jut](#getting-a-list-of-things-out-of-jut)
+    * [Reconstructing log lines from all your hosts with Jut](#reconstructing-log-lines-from-all-your-hosts-with-jut)
+    * [Getting a desktop notification with Jut](#getting-a-desktop-notification-with-jut)
+  * [Development](#development)
+    * [Running Tests](#running-tests)
+    * [Running a specific test](#running-a-specific-test)
+
 ## Requirements
 
  * Python 2.7.9+
@@ -49,7 +71,9 @@ or
 easy_install -U jut-tools
 ```
 
-## Configuration
+## Config Command
+
+### First time configuration
 
 Once you've installed the jut python tools you should immediately run:
 
@@ -72,9 +96,20 @@ easily switch between them with a simple:
 jut config defaults -u username
 ```
 
-## Usage Examples
+### Removing configurations
 
-### jut upload
+Removing a configuration is also very straightforward with:
+
+```
+jut config rm
+```
+
+And then follow the prompts to choose the correct configuration to remove.
+
+
+## Upload Command
+
+### Upload a JSON file
 
 To upload a JSON file containing multiple data points just use *jut* like
 so:
@@ -150,7 +185,7 @@ POST: [
 ```
 Removing the `--dry-run` and you'll push your data up to Jut in a jiffy.
 
-## Uploading a directory of JSON files
+### Uploading a directory of JSON files
 
 Instead of building this type of feature into jut-tools we felt it was easier
 for you to use your trusty command line tools like so:
@@ -163,13 +198,16 @@ done
 ```
 
 
-### jut run
+## Run Command
 
 **jut** also allows you to easily run **juttle** from the command line and use
 the results with the various other CLI tools you're use to using. Here are some
 example uses:
 
-#### see how many points you ingested into the 'default' space in the last 5 minutes
+### Getting JSON data out of Jut
+
+Let's see how many points you ingested into the 'default' space in the last 5
+minutes:
 
 ```
 jut run "read -last :5 minutes: -space 'jut_internal' name='import.success' AND import_space='default' | reduce sum(value)"
@@ -185,7 +223,9 @@ Output:
 ]
 ```
 
-#### list of host names that have reported metrics to the 'collectd' space in the past minute
+### Getting a list of things out of Jut
+
+List of host names that have reported metrics to the 'collectd' space in the past minute
 
 ```
 jut run -f text "read -space 'collectd' -last :1 minutes: | reduce count() by host | keep host | uniq host | sort host"
@@ -207,10 +247,14 @@ qa-selenium-node8
 sauce0
 ```
 
-#### Look for errors in the events coming into your default space for the past 15 minutes
+### Reconstructing log lines from all your hosts with Jut
+
+With the following you juttle you could easily put together all error log
+lines in order from all of the systems currently sending their log lines to
+your Jut instance:
 
 ```
-jut run -f text "read -last :15 minutes: 'error' | keep time, message"
+jut run -f text "read -type 'event' -last :15 minutes: 'error' | keep time, message"
 ```
 
 May look something like this:
@@ -239,7 +283,10 @@ May look something like this:
 2015-10-02T01:05:24.571Z (22922) _make_request error  Received status code 503 from server.
 ```
 
-#### Get a desktop notification when any collectd cpu usage is higher than 90% for over a minute
+### Getting a desktop notification with Jut
+
+To get a desktop notification when any *collectd* CPU usage is higher than 90%
+for over a minute, you could use something like so:
 
 ```
 jut run "read -type 'metric' name='cpu.idle' | put value=100-value | reduce -every :1 minute: value=avg(value) | filter value > 90 | keep time, host, value"
@@ -292,6 +339,8 @@ Then you can run the high CPU usage juttle like so:
 
 ## Development
 
+### Running Tests
+
 When developing there are some unittests that can be used to verify your
 changes have not broken existing functionality as well as for you to add more
 tests to verify your changes. To run these you need to supply a username/password
@@ -301,3 +350,18 @@ combo that has admin access to a real deployment. You can run it like so:
 JUT_USER=username JUT_PASS=password python setup.py test
 ```
 
+### Running a specific test
+
+You can run just a test by name like so:
+
+```
+JUT_USER=username JUT_PASS=password python -m unittest tests.jut_upload_tests.JutUploadTests.test_jut_upload_to_url
+```
+
+Would run that one test within the upload tests called `test_jut_upload_to_url`
+and if you wanted to run just the upload suite of tests then the invocation
+would look like so:
+
+```
+JUT_USER=username JUT_PASS=password python -m unittest tests.jut_upload_tests
+```

@@ -50,6 +50,6 @@ def init():
 
     if os.system(setup_command) != 0:
         error('Failed to create testing configuration')
-        sys.exit(-1)
+
 
 init()

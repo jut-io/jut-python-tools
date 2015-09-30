@@ -6,13 +6,13 @@ data engine API
 import json
 import random
 import requests
-import socket
 
 from websocket import create_connection
 
 from jut import defaults
 from jut.api import auth, deployments
 from jut.common import debug, is_debug_enabled
+from jut.exceptions import JutException
 
 
 def get_data_url(deployment_name,
@@ -37,7 +37,40 @@ def get_data_url(deployment_name,
         if endpoint_type in endpoint['type']:
             endpoints.append(endpoint)
 
+    if len(endpoints) == 0:
+        raise JutException('No data engine currently configured for '
+                           'deployment "%s"' % deployment_name)
+
     return random.choice(endpoints)['uri']
+
+
+def get_data_urls(deployment_name,
+                  endpoint_type='juttle',
+                  access_token=None,
+                  app_url=defaults.APP_URL):
+    """
+    get all of the data urls for a specified endpoint_type, currently supported types
+    are:
+
+     * http-import: for importing data points
+     * juttle: for running juttle programs
+
+    """
+    deployment_details = deployments.get_deployment_details(deployment_name,
+                                                            access_token=access_token,
+                                                            app_url=app_url)
+
+    # use a random juttle endpoint
+    data_urls = []
+    for endpoint in deployment_details['endpoints']:
+        if endpoint_type in endpoint['type']:
+            data_urls.append(endpoint['uri'])
+
+    if len(data_urls) == 0:
+        raise JutException('No data engine currently configured for '
+                           'deployment "%s"' % deployment_name)
+
+    return data_urls
 
 
 def get_juttle_data_url(deployment_name,
@@ -70,7 +103,8 @@ def run(juttle,
         program_name=None,
         persist=True,
         access_token=None,
-        app_url=defaults.APP_URL):
+        app_url=defaults.APP_URL,
+        reconnect=False):
     """
     run a juttle program through the juttle streaming API and return the
     the various events that are part of running a Juttle program which
@@ -147,6 +181,8 @@ def run(juttle,
              therefore becomes a persistent job.
     access_token: valid access toke obtained using auth.get_access_token
     app_url: optional argument used primarily for internal Jut testing
+    reconnect: attempt to reconnect the websocket if we get an error at
+               runtime
     """
     headers = auth.access_token_to_headers(access_token)
 
@@ -154,7 +190,7 @@ def run(juttle,
                                    app_url=app_url,
                                    access_token=access_token)
 
-    url = '%s/api/v1/juttle/channel' %data_url.replace('https://', 'wss://')
+    url = '%s/api/v1/juttle/channel' % data_url.replace('https://', 'wss://')
     token_obj = {"accessToken": access_token['access_token']}
 
     if is_debug_enabled():
@@ -189,11 +225,11 @@ def run(juttle,
         return
 
     job_info = response.json()
+    # yield job_info so the caller to this method can figure out which sinks
+    # correlate to which flowgraphs
+    yield job_info
 
     if is_debug_enabled():
-        # yield job_info so the caller to this method can figure out which sinks
-        # correlate to which flowgraphs
-        yield job_info
         debug('started job %s', json.dumps(job_info))
 
     pong = json.dumps({
@@ -223,4 +259,61 @@ def run(juttle,
             yield data
 
     websocket.close()
+
+
+def get_jobs(deployment_name,
+             access_token=None,
+             app_url=defaults.APP_URL):
+
+    headers = auth.access_token_to_headers(access_token)
+    data_urls = get_data_urls(deployment_name,
+                              app_url=app_url,
+                              access_token=access_token)
+
+    jobs = []
+
+    for data_url in data_urls:
+        url = '%s/api/v1/jobs' % data_url
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            jobs += response.json()['jobs']
+        else:
+            raise JutException('Error %s: %s' % (response.status_code, response.text))
+
+    return jobs
+
+
+def get_job_details(job_id,
+                    deployment_name,
+                    access_token=None,
+                    app_url=defaults.APP_URL):
+
+    jobs = get_jobs(deployment_name,
+                    access_token=access_token,
+                    app_url=app_url)
+
+    for job in jobs:
+        if job['id'] == job_id:
+            return job
+
+    raise JutException('Unable to find job with id "%s"' % job_id)
+
+
+def delete_job(job_id,
+               deployment_name,
+               access_token=None,
+               app_url=defaults.APP_URL):
+
+    headers = auth.access_token_to_headers(access_token)
+    data_url = get_juttle_data_url(deployment_name,
+                                   app_url=app_url,
+                                   access_token=access_token)
+
+    url = '%s/api/v1/jobs/%s' % (data_url, job_id)
+    response = requests.delete(url, headers=headers)
+
+    if response.status_code != 200:
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
+
 

@@ -14,30 +14,31 @@ from jut.exceptions import JutException
 
 _CONFIG = None
 _CONFIG_FILEPATH = None
+_JUT_HOME = None
 
 
 def init():
-    global _CONFIG, _CONFIG_FILEPATH
+    global _CONFIG, _CONFIG_FILEPATH, _JUT_HOME
 
     _CONFIG = ConfigParser.RawConfigParser()
+
     # HOME_OVERRIDE for testing purposes
     if os.environ.get('HOME_OVERRIDE') != None:
-        home = os.environ.get('HOME_OVERRIDE')
+        _JUT_HOME = os.environ.get('HOME_OVERRIDE')
     else:
         home = expanduser('~')
+        _JUT_HOME = os.path.join(home, '.jut')
 
-    jut_home = os.path.join(home, '.jut')
+    if not os.path.exists(_JUT_HOME):
+        os.makedirs(_JUT_HOME)
 
-    if not os.path.exists(jut_home):
-        os.makedirs(jut_home)
-
-    _CONFIG_FILEPATH = os.path.join(home, '.jut', 'config')
+    _CONFIG_FILEPATH = os.path.join(_JUT_HOME, 'config')
 
     if os.path.exists(_CONFIG_FILEPATH):
         _CONFIG.read(_CONFIG_FILEPATH)
 
 
-def print_configurations():
+def show():
     """
     print the available configurations directly to stdout
 
@@ -45,7 +46,7 @@ def print_configurations():
     if not is_configured():
         raise JutException('No configurations available, please run: `jut config add`')
 
-    info('Currently jut configurations:')
+    info('Available jut configurations:')
     index = 0
     for configuration in _CONFIG.sections():
         username = _CONFIG.get(configuration, 'username')
@@ -79,9 +80,9 @@ def set_default(name=None, index=None):
     set the default configuration by name
 
     """
-    
     default_was_set = False
     count = 1
+
     for configuration in _CONFIG.sections():
         if index != None:
             if count == index:
@@ -105,10 +106,14 @@ def set_default(name=None, index=None):
     with open(_CONFIG_FILEPATH, 'w') as configfile:
         _CONFIG.write(configfile)
 
-    info('Configuration updated at ~/.jut/config')
+    info('Configuration updated at %s' % _JUT_HOME)
 
+def exists(name):
+    """
+    """
+    return _CONFIG.has_section(name)
 
-def add_configuration(name, **kwargs):
+def add(name, **kwargs):
     """
     add a new configuration with the name specified and all of the keywords
     as attributes of that configuration.
@@ -122,7 +127,7 @@ def add_configuration(name, **kwargs):
     with open(_CONFIG_FILEPATH, 'w') as configfile:
         _CONFIG.write(configfile)
 
-    info('Configuration updated at ~/.jut/config')
+    info('Configuration updated at %s' % _JUT_HOME)
 
 
 def get_default():
@@ -192,6 +197,5 @@ def is_default(name=None, index=None):
         count += 1
 
     return False
-
 
 init()

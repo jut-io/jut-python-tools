@@ -7,8 +7,8 @@ import json
 import requests
 
 from jut import defaults
-from jut.api import auth, environment
 from jut.exceptions import JutException
+from jut.api import auth, accounts, environment
 
 ## deployments
 
@@ -178,6 +178,7 @@ def create_space(deployment_name,
     else:
         raise JutException('Error %s: %s' % (response.status_code, response.text))
 
+
 def delete_space(deployment_name,
                  space_name,
                  access_token=None,
@@ -222,7 +223,30 @@ def space_exists(deployment_name,
 
 # users
 
-def add_user(account_id,
+def get_users(deployment_name,
+              access_token=None,
+              app_url=defaults.APP_URL):
+    """
+    get all users in the deployment specified
+
+    """
+    deployment_id = get_deployment_id(deployment_name,
+                                      access_token=access_token,
+                                      app_url=app_url)
+
+    headers = auth.access_token_to_headers(access_token)
+    deployment_url = environment.get_deployment_url(app_url=app_url)
+    response = requests.get('%s/api/v1/deployments/%s/accounts' %
+                            (deployment_url, deployment_id),
+                            headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
+
+
+def add_user(username,
              deployment_name,
              access_token=None,
              app_url=defaults.APP_URL):
@@ -233,6 +257,10 @@ def add_user(account_id,
     deployment_id = get_deployment_id(deployment_name,
                                       access_token=access_token,
                                       app_url=app_url)
+
+    account_id = accounts.get_account_id(username,
+                                         access_token=access_token,
+                                         app_url=app_url)
 
     headers = auth.access_token_to_headers(access_token)
     deployment_url = environment.get_deployment_url(app_url=app_url)
