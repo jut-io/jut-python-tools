@@ -8,6 +8,7 @@ import getpass
 import json
 import os
 import sys
+import time
 
 from jut import defaults, config
 
@@ -15,7 +16,6 @@ from jut.api import auth, \
                     authorizations, \
                     data_engine, \
                     deployments, \
-                    environment, \
                     integrations
 
 from jut.common import info, error
@@ -272,9 +272,16 @@ def main():
                             default='json',
                             help='')
 
-    run_parser.add_argument('--debug',
+    run_parser.add_argument('-n', '--name',
+                            help='give your program a name to appear in the '
+                                 'Jobs application')
+
+    run_parser.add_argument('-p', '--persist',
                             action='store_true',
-                            dest='debug')
+                            help='allow the program containing background '
+                                 'outputs to become a persistent job by '
+                                 'disconnecting form the running job (ie '
+                                 'essentially backgrounding your program)')
 
     options = parser.parse_args()
 
@@ -331,7 +338,6 @@ def main():
         url = options.url
 
         if url == None:
-
             configuration = config.get_default()
             app_url = configuration['app_url']
 
@@ -384,13 +390,23 @@ def main():
         access_token = auth.get_access_token(client_id=client_id,
                                              client_secret=client_secret,
                                              app_url=app_url)
+
+        program_name = options.name
+        if program_name == None:
+            program_name = 'jut-tools program %s' % int(time.time())
+
         if options.format == 'json':
             point_before = False
-            info('[')
+
+            if not options.persist:
+                info('[')
+
             for points in data_engine.run(juttle,
                                           deployment_name,
-                                          app_url=app_url,
-                                          access_token=access_token):
+                                          program_name=program_name,
+                                          persist=options.persist,
+                                          access_token=access_token,
+                                          app_url=app_url):
 
                 for point in points:
                     if point_before:
@@ -398,13 +414,16 @@ def main():
                     info(json.dumps(point, indent=4))
                     point_before = True
 
-            info(']')
+            if not options.persist:
+                info(']')
 
         elif options.format == 'text':
             for points in data_engine.run(juttle,
                                           deployment_name,
-                                          app_url=app_url,
-                                          access_token=access_token):
+                                          program_name=program_name,
+                                          persist=options.persist,
+                                          access_token=access_token,
+                                          app_url=app_url):
                 for point in points:
                     line = []
                     if 'time' in point:
@@ -417,7 +436,7 @@ def main():
                     info(' '.join(line))
 
     else:
-        raise Exception('Bad')
+        raise Exception('Unexpected jut command "%s"' % options.command)
 
 
 if __name__ == '__main__':

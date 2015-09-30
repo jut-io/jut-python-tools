@@ -10,8 +10,8 @@ import requests
 from websocket import create_connection
 
 from jut import defaults
-from jut.api import auth, deployments, environment
-from jut.common import debug, info, error
+from jut.api import auth, deployments
+from jut.common import debug
 
 
 def get_data_url(deployment_name,
@@ -66,11 +66,22 @@ def get_import_data_url(deployment_name,
 
 def run(juttle,
         deployment_name,
+        program_name=None,
+        persist=True,
         access_token=None,
         app_url=defaults.APP_URL):
     """
     run a juttle program through the juttle streaming API
 
+    juttle: juttle program to execute
+    deployment_name: the deployment name to execute the program on
+    persist: if set to True then we won't wait for response data and will
+             disconnect from the websocket leaving the program running in
+             the background if it is uses a background output
+             (http://docs.jut.io/juttle-guide/#background_outputs) and
+             therefore becomes a persistent job.
+    access_token: valid access toke obtained using auth.get_access_token
+    app_url: optional argument used primarily for internal Jut testing
     """
     headers = auth.access_token_to_headers(access_token)
 
@@ -94,7 +105,7 @@ def run(juttle,
     channel_id = channel_id_obj['channel_id']
     juttle_job = {
         'channel_id': channel_id,
-        'alias': 'XXX',
+        'alias': program_name,
         'program': juttle
     }
 
@@ -112,44 +123,46 @@ def run(juttle,
 
     debug('started job %s', json.dumps(job_info, indent=2))
 
-    job_finished = False
-    sinks_finished = False
-    sinks = job_info['sinks']
-
-    for sink in sinks:
-        sink['done'] = False
-
-    while not job_finished and not sinks_finished:
-        data = json.loads(websocket.recv())
-        debug('received %s' % data)
-
-        if 'sink' in data.keys():
-            sink_channel = data['sink']
-
-            if 'points' in data.keys():
-                yield data['points']
-
-            elif 'eof' in data.keys():
-                for sink in sinks:
-                    if sink['channel'] == sink_channel:
-                        sink['done'] = True
-                        break
-
-            elif 'tick' in data.keys():
-                pass
-
-        if 'ping' in data.keys():
-            # ping/pong (ie heartbeat) mechanism
-            debug('ping received on websocket')
-            pong_obj = {'pong': True}
-            websocket.send(json.dumps(pong_obj))
-            debug('sent pong')
-
-        if 'job_end' in data.keys() and data['job_end'] == True:
-            job_finished = True
+    if not persist:
+        job_finished = False
+        sinks_finished = False
+        sinks = job_info['sinks']
 
         for sink in sinks:
-            sinks_finished &= sink['done']
+            sink['done'] = False
+
+        while not job_finished and not sinks_finished:
+            data = json.loads(websocket.recv())
+            debug('received %s' % data)
+
+            if 'sink' in data.keys():
+                sink_channel = data['sink']
+
+                if 'points' in data.keys():
+                    yield data['points']
+
+                elif 'eof' in data.keys():
+                    for sink in sinks:
+                        if sink['channel'] == sink_channel:
+                            sink['done'] = True
+                            break
+
+                elif 'tick' in data.keys():
+                    pass
+
+            if 'ping' in data.keys():
+                # ping/pong (ie heartbeat) mechanism
+                debug('ping received on websocket')
+                pong_obj = {'pong': True}
+                websocket.send(json.dumps(pong_obj))
+                debug('sent pong')
+
+            if 'job_end' in data.keys() and data['job_end'] == True:
+                job_finished = True
+
+            for sink in sinks:
+                sinks_finished &= sink['done']
 
     websocket.close()
+ 
 
