@@ -11,6 +11,12 @@ Installation is as easy as:
 pip install jut-tools
 ```
 
+or 
+
+```
+easy_install jut-tools
+```
+
 That will get you the latest official build from pypi but if you want to use
 the bleeding master code you can also use:
 
