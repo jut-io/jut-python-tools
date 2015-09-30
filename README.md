@@ -1,23 +1,26 @@
 # jut-tools
 
-Command line tools for interacting with your jut instance
+Command line tools for interacting with your Jut instance.
 
 
 ## Installation
 
-While this is a private repo:
+Installation is as easy as:
+
 ```
-pip install -e git+ssh://git@github.com/jut-io/jut-python-tools.git#egg=jut
+pip install jut-tools
 ```
 
-After we go public:
+That will get you the latest official build from pypi but if you want to use
+the bleeding master code you can also use:
+
 ```
 pip install -e git+git://github.com/jut-io/jut-python-tools.git#egg=jut
 ```
 
 ## Configuration
 
-Once you've installed the jut python tools you should immediately run
+Once you've installed the jut python tools you should immediately run:
 
 ```
 jut config add

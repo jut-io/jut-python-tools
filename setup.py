@@ -9,7 +9,9 @@ setup(
     name='jut-tools',
     version='0.1',
     author='Rodney Gomes',
-    author_email='rodney@jut.io', url='',
+    author_email='rodney@jut.io',
+    url='https://github.com/jut-io/jut-python-tools',
+    download_url='https://github.com/jut-io/jut-python-tools/tarball/0.1',
 
     install_requires=[
         'requests==2.7.0',
