@@ -5,7 +5,7 @@ setup script
 
 from setuptools import setup, find_packages
 
-_VERSION = '0.1.1'
+_VERSION = '0.1.2'
 
 setup(
     name='jut-tools',
@@ -33,7 +33,7 @@ setup(
     description='jut command lines tools',
 
     # pypi doesn't support markdown so we can't push the README.md as is
-    long_description='README <https://github.com/jut-io/jut-python-tools/blob/master/README.md>',
+    long_description='https://github.com/jut-io/jut-python-tools/blob/master/README.md',
 
     include_package_data=True,
     zip_safe=False,
