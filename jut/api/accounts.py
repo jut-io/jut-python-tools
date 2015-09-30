@@ -7,6 +7,7 @@ import json
 
 from jut import defaults
 from jut.api import auth, environment
+from jut.exceptions import JutException
 
 
 def create_user(name,
@@ -38,7 +39,7 @@ def create_user(name,
         return response.json()
 
     else:
-        raise Exception('Error %s; %s' % (response.status_code, response.text))
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
 
 
 def delete_user(account_id,
@@ -58,7 +59,7 @@ def delete_user(account_id,
         return response.text
 
     else:
-        raise Exception('Error %s; %s' % (response.status_code, response.text))
+        raise JutException('Error %s; %s' % (response.status_code, response.text))
 
 
 def get_account_id(username,
@@ -79,7 +80,7 @@ def get_account_id(username,
         return response.json()['id']
 
     else:
-        raise Exception('Error %s; %s' % (response.status_code, response.text))
+        raise JutException('Error %s; %s' % (response.status_code, response.text))
 
 
 def user_exists(username,
@@ -99,6 +100,6 @@ def user_exists(username,
     elif response.status_code == 200:
         return True
     else:
-        raise Exception('Error %s: %s' % (response.status_code, response.text))
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
 
 

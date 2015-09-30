@@ -8,6 +8,7 @@ import memoized
 import requests
 
 from jut import defaults
+from jut.exceptions import JutException
 
 @memoized.memoized
 def get_details(app_url=defaults.APP_URL):
@@ -21,8 +22,8 @@ def get_details(app_url=defaults.APP_URL):
     if response.status_code == 200:
         return response.json()
     else:
-        raise Exception('Unable to retrieve environment details from %s, got %s: %s' %
-                        (url, response.status_code, response.text))
+        raise JutException('Unable to retrieve environment details from %s, got %s: %s' %
+                           (url, response.status_code, response.text))
 
 
 def get_auth_url(app_url=defaults.APP_URL):

@@ -7,6 +7,7 @@ import requests
 
 from jut import defaults
 from jut.api import auth, environment
+from jut.exceptions import JutException
 
 
 def get_authorization(access_token,
@@ -30,4 +31,4 @@ def get_authorization(access_token,
         return (authorization['client_id'], authorization['client_secret'])
 
     else:
-        raise Exception('Error Auth %s: %s' % (response.status_code, response.text))
+        raise JutException('Error Auth %s: %s' % (response.status_code, response.text))

@@ -5,6 +5,7 @@ basic set of `jut config` tests
 
 import os
 import unittest
+import tempfile
 
 from tests.util import jut, \
                        create_user_in_default_deployment, \
@@ -45,6 +46,54 @@ class JutConfigTests(unittest.TestCase):
                 line = ' %d: %s@%s' % (index, username, app_url)
 
         self.assertTrue(line == stdout_lines[at_line])
+
+
+    def test_negative_config_defaults(self):
+        """
+        when calling `jut config defaults` if you haven't configured yet we
+        should fail correctly and print the appropriate message
+
+        """
+
+        home_override = os.environ.get('HOME_OVERRIDE')
+        try:
+            jut_user = os.environ.get('JUT_USER')
+            new_home = tempfile.mkdtemp()
+            os.environ['HOME_OVERRIDE'] = new_home
+
+            stdout, stderr = jut('config',
+                                 'defaults',
+                                 exit_code=255)
+
+            self.assertTrue('No configurations available, please run: `jut config add`' in stderr)
+            self.assertEqual(stdout, '')
+
+        finally:
+            os.environ['HOME_OVERRIDE'] = home_override
+
+
+    def test_negative_config_list(self):
+        """
+        when calling `jut config list` if you haven't configured yet we
+        should fail correctly and print the appropriate message
+
+        """
+
+        home_override = os.environ.get('HOME_OVERRIDE')
+        try:
+            jut_user = os.environ.get('JUT_USER')
+            new_home = tempfile.mkdtemp()
+            os.environ['HOME_OVERRIDE'] = new_home
+
+            stdout, stderr = jut('config',
+                                 'list',
+                                 exit_code=255)
+
+            self.assertTrue('No configurations available, please run: `jut config add`' in stderr)
+            self.assertEqual(stdout, '')
+
+        finally:
+            os.environ['HOME_OVERRIDE'] = home_override
 
 
     def test_config_list(self):
