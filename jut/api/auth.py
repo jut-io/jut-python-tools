@@ -8,6 +8,8 @@ import json
 
 from jut import defaults
 from jut.api import environment
+from jut.exceptions import JutException
+
 
 def get_access_token(username=None,
                      password=None,
@@ -54,24 +56,24 @@ def get_access_token(username=None,
         response = sess.post('%s/local' % auth_url, data=form)
 
         if response.status_code != 200:
-            raise Exception('Failed /local check %s: %s' %
-                            (response.status_code, response.text))
+            raise JutException('Failed /local check %s: %s' %
+                               (response.status_code, response.text))
 
         response = sess.get(auth_url + '/status')
         if response.status_code != 200:
-            raise Exception('Failed /status check %s: %s' %
-                            (response.status_code, response.text))
+            raise JutException('Failed /status check %s: %s' %
+                               (response.status_code, response.text))
 
         if not response.json()['authorized']:
-            raise Exception('Failed authentication with (%s,%s), got %s' %
-                            (username, password, response.text))
+            raise JutException('Failed authentication with (%s,%s), got %s' %
+                               (username, password, response.text))
 
         response = sess.post(auth_url + '/token',
                              data={'grant_type': 'client_credentials'})
 
     if response.status_code != 200:
-        raise Exception('Unable to get auth token %s: %s' %
-                        (response.status_code, response.text))
+        raise JutException('Unable to get auth token %s: %s' %
+                           (response.status_code, response.text))
 
     return response.json()
 
@@ -86,7 +88,7 @@ def access_token_to_headers(access_token):
     """
 
     if access_token == None:
-        raise Exception('You must supply a valid access_token')
+        raise JutException('You must supply a valid access_token')
 
     if access_token['token_type'] == 'Bearer':
         return {
@@ -95,6 +97,6 @@ def access_token_to_headers(access_token):
             'Accept': 'application/json'
         }
     else:
-        raise Exception('Token not supported %s' % access_token)
+        raise JutException('Token not supported %s' % access_token)
 
 

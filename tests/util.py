@@ -15,7 +15,8 @@ DEFAULT_TEST_USERNAME = 'jut-tools-user'
 # data service only knows about space changes every 30s
 SPACE_CREATE_TIMEOUT = 30
 
-def jut(*args):
+def jut(*args,
+        **kwargs):
     """
     calls the jut/cli.py code and returns the exact stdout, stdin as lists of
     lines that were written to each output
@@ -29,7 +30,13 @@ def jut(*args):
                                stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
 
-    if process.wait() != 0:
+    if 'exit_code' in kwargs:
+        exit_code = kwargs['exit_code']
+    else:
+        exit_code = 0
+
+    if process.wait() != exit_code:
+        error('Expected return code %s, got %s', exit_code, process.wait())
         info(stdout)
         error(stderr)
 

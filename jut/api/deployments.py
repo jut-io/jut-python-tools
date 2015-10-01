@@ -8,7 +8,7 @@ import requests
 
 from jut import defaults
 from jut.api import auth, environment
-
+from jut.exceptions import JutException
 
 ## deployments
 
@@ -27,7 +27,7 @@ def get_deployments(access_token=None,
     if response.status_code == 200:
         return response.json()
     else:
-        raise Exception('Error %s: %s' % (response.status_code, response.text))
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
 
 
 def get_deployment_id(deployment_name,
@@ -50,9 +50,9 @@ def get_deployment_id(deployment_name,
             if deployment['name'] == deployment_name:
                 return deployment['deployment_id']
 
-        raise Exception('Unable to find deployment with name %s' % deployment_name)
+        raise JutException('Unable to find deployment with name %s' % deployment_name)
     else:
-        raise Exception('Error %s: %s' % (response.status_code, response.text))
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
 
 
 def get_deployment_details(deployment_name,
@@ -76,7 +76,7 @@ def get_deployment_details(deployment_name,
     if response.status_code == 200:
         return response.json()
     else:
-        raise Exception('Error %s: %s' % (response.status_code, response.text))
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
 
 
 def get_apikey(deployment_name,
@@ -95,7 +95,7 @@ def get_apikey(deployment_name,
     if response.status_code == 200:
         return response.json()['apikey']
     else:
-        raise Exception('Error %s: %s' % (response.status_code, response.text))
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
 
 
 # spaces
@@ -120,7 +120,7 @@ def get_spaces(deployment_name,
     if response.status_code == 200:
         return response.json()
     else:
-        raise Exception('Error %s: %s' % (response.status_code, response.text))
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
 
 
 def get_space_id(deployment_name,
@@ -139,7 +139,7 @@ def get_space_id(deployment_name,
         if space['name'] == space_name:
             return space['id']
 
-    raise Exception('Unable to find space "%s" within deployment "%s"' %
+    raise JutException('Unable to find space "%s" within deployment "%s"' %
                     (space_name, deployment_name))
 
 
@@ -176,7 +176,7 @@ def create_space(deployment_name,
     if response.status_code == 201:
         return response.json()
     else:
-        raise Exception('Error %s: %s' % (response.status_code, response.text))
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
 
 def delete_space(deployment_name,
                  space_name,
@@ -201,7 +201,7 @@ def delete_space(deployment_name,
     if response.status_code == 204:
         return response.text
     else:
-        raise Exception('Error %s: %s' % (response.status_code, response.text))
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
 
 
 def space_exists(deployment_name,
@@ -243,5 +243,5 @@ def add_user(account_id,
     if response.status_code == 204:
         return response.text
     else:
-        raise Exception('Error %s: %s' % (response.status_code, response.text))
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
 

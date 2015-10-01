@@ -10,9 +10,11 @@ from os.path import expanduser
 
 from jut import defaults
 from jut.common import info
+from jut.exceptions import JutException
 
 _CONFIG = None
 _CONFIG_FILEPATH = None
+
 
 def init():
     global _CONFIG, _CONFIG_FILEPATH
@@ -41,7 +43,7 @@ def print_configurations():
 
     """
     if not is_configured():
-        raise Exception('No configurations available, please run: `jut config add`')
+        raise JutException('No configurations available, please run: `jut config add`')
 
     info('Currently jut configurations:')
     index = 0
@@ -98,7 +100,7 @@ def set_default(name=None, index=None):
         count += 1
 
     if not default_was_set:
-        raise Exception('Unable to find %s configuration' % name)
+        raise JutException('Unable to find %s configuration' % name)
 
     with open(_CONFIG_FILEPATH, 'w') as configfile:
         _CONFIG.write(configfile)
@@ -130,7 +132,7 @@ def get_default():
     """
 
     if not is_configured():
-        raise Exception('No configurations available, please run `jut config add`')
+        raise JutException('No configurations available, please run `jut config add`')
 
     for configuration in _CONFIG.sections():
         if _CONFIG.has_option(configuration, 'default'):
@@ -161,7 +163,7 @@ def remove(name=None, index=None):
         count += 1
 
     if not removed:
-        raise Exception('Unable to find %s configuration' % name)
+        raise JutException('Unable to find %s configuration' % name)
 
     with open(_CONFIG_FILEPATH, 'w') as configfile:
         _CONFIG.write(configfile)
@@ -174,7 +176,7 @@ def is_default(name=None, index=None):
     """
 
     if not is_configured():
-        raise Exception('No configurations available, please run `jut config add`')
+        raise JutException('No configurations available, please run `jut config add`')
 
     count = 1
     for configuration in _CONFIG.sections():

@@ -19,6 +19,7 @@ from jut.api import auth, \
                     integrations
 
 from jut.common import info, error
+from jut.exceptions import JutException
 from jut.util import uploader
 
 
@@ -285,59 +286,97 @@ def main():
 
     options = parser.parse_args()
 
-    if options.subcommand == 'config':
+    try:
+        if options.subcommand == 'config':
 
-        if options.config_subcommand == 'list':
-            config.print_configurations()
+            if options.config_subcommand == 'list':
+                config.print_configurations()
 
-        elif options.config_subcommand == 'add':
-            add_configuration(options)
+            elif options.config_subcommand == 'add':
+                add_configuration(options)
 
-        elif options.config_subcommand == 'rm':
-            was_default = False
+            elif options.config_subcommand == 'rm':
+                was_default = False
 
-            if options.username != None:
-                configuration = '%s@%s' % (options.username, options.app_url)
-                was_default = config.is_default(name=configuration)
-                config.remove(name=configuration)
+                if options.username != None:
+                    configuration = '%s@%s' % (options.username, options.app_url)
+                    was_default = config.is_default(name=configuration)
+                    config.remove(name=configuration)
+
+                else:
+                    config.print_configurations()
+                    which = raw_input('Which configuration to delete: ')
+                    which = int(which)
+                    config.remove(index=which)
+                    was_default = config.is_default(index=which)
+
+                if was_default:
+                    default_configuration()
+
+            elif options.config_subcommand == 'defaults':
+                if options.username != None:
+                    configuration = '%s@%s' % (options.username, options.app_url)
+                    config.set_default(name=configuration)
+                    configuration = config.get_default()
+
+                else:
+                    config.print_configurations()
+                    which = raw_input('Set default configuration to: ')
+                    config.set_default(index=int(which))
+                    configuration = config.get_default()
+
+                default_deployment(configuration['app_url'],
+                                   configuration['client_id'],
+                                   configuration['client_secret'])
+
+        elif options.subcommand == 'upload':
+            if not sys.stdin.isatty():
+                json_file = sys.stdin
 
             else:
-                config.print_configurations()
-                which = raw_input('Which configuration to delete: ')
-                which = int(which)
-                config.remove(index=which)
-                was_default = config.is_default(index=which)
+                json_file = open(options.source, 'r')
 
-            if was_default:
-                default_configuration()
+            url = options.url
 
-        elif options.config_subcommand == 'defaults':
-            if options.username != None:
-                configuration = '%s@%s' % (options.username, options.app_url)
-                config.set_default(name=configuration)
+            if url == None:
                 configuration = config.get_default()
+                app_url = configuration['app_url']
 
+                if options.deployment != None:
+                    deployment_name = options.deployment
+                else:
+                    deployment_name = configuration['deployment_name']
+
+                client_id = configuration['client_id']
+                client_secret = configuration['client_secret']
+
+                access_token = auth.get_access_token(client_id=client_id,
+                                                     client_secret=client_secret,
+                                                     app_url=app_url)
+
+                url = integrations.get_webhook_url(deployment_name,
+                                                   space=options.space,
+                                                   access_token=access_token,
+                                                   app_url=app_url)
+
+            info('Pushing to %s' % url)
+            uploader.push_json_file(json_file,
+                                    url,
+                                    dry_run=options.dry_run,
+                                    batch_size=options.batch_size,
+                                    anonymize_fields=options.anonymize_fields,
+                                    remove_fields=options.remove_fields,
+                                    rename_fields=options.rename_fields)
+
+        elif options.subcommand == 'run':
+            if not config.is_configured():
+                add_configuration(options)
+
+            if os.path.exists(options.juttle):
+                juttle = open(options.juttle, 'r').read()
             else:
-                info('Pick a default configuration from the list below:')
-                config.print_configurations()
-                which = raw_input('Set default configuration to: ')
-                config.set_default(index=int(which))
-                configuration = config.get_default()
+                juttle = options.juttle
 
-            default_deployment(configuration['app_url'],
-                               configuration['client_id'],
-                               configuration['client_secret'])
-
-    elif options.subcommand == 'upload':
-        if not sys.stdin.isatty():
-            json_file = sys.stdin
-
-        else:
-            json_file = open(options.source, 'r')
-
-        url = options.url
-
-        if url == None:
             configuration = config.get_default()
             app_url = configuration['app_url']
 
@@ -350,94 +389,59 @@ def main():
             client_secret = configuration['client_secret']
 
             access_token = auth.get_access_token(client_id=client_id,
-                                                 client_secret=client_secret,
-                                                 app_url=app_url)
+                                                client_secret=client_secret,
+                                                app_url=app_url)
 
-            url = integrations.get_webhook_url(deployment_name,
-                                               space=options.space,
-                                               access_token=access_token,
-                                               app_url=app_url)
+            program_name = options.name
+            if program_name == None:
+                program_name = 'jut-tools program %s' % int(time.time())
 
-        info('Pushing to %s' % url)
-        uploader.push_json_file(json_file,
-                                url,
-                                dry_run=options.dry_run,
-                                batch_size=options.batch_size,
-                                anonymize_fields=options.anonymize_fields,
-                                remove_fields=options.remove_fields,
-                                rename_fields=options.rename_fields)
+            if options.format == 'json':
+                point_before = False
 
-    elif options.subcommand == 'run':
-        if not config.is_configured():
-            add_configuration(options)
+                if not options.persist:
+                    info('[')
 
-        if os.path.exists(options.juttle):
-            juttle = open(options.juttle, 'r').read()
+                for points in data_engine.run(juttle,
+                                              deployment_name,
+                                              program_name=program_name,
+                                              persist=options.persist,
+                                              access_token=access_token,
+                                              app_url=app_url):
+
+                    for point in points:
+                        if point_before:
+                            info(',')
+                        info(json.dumps(point, indent=4))
+                        point_before = True
+
+                if not options.persist:
+                    info(']')
+
+            elif options.format == 'text':
+                for points in data_engine.run(juttle,
+                                              deployment_name,
+                                              program_name=program_name,
+                                              persist=options.persist,
+                                              access_token=access_token,
+                                              app_url=app_url):
+                    for point in points:
+                        line = []
+                        if 'time' in point:
+                            timestamp = point['time']
+                            del point['time']
+                            line.append(timestamp)
+
+                        keys = sorted(point.keys())
+                        line += [str(point[key]) for key in keys]
+                        info(' '.join(line))
+
         else:
-            juttle = options.juttle
+            raise Exception('Unexpected jut command "%s"' % options.command)
 
-        configuration = config.get_default()
-        app_url = configuration['app_url']
-
-        if options.deployment != None:
-            deployment_name = options.deployment
-        else:
-            deployment_name = configuration['deployment_name']
-
-        client_id = configuration['client_id']
-        client_secret = configuration['client_secret']
-
-        access_token = auth.get_access_token(client_id=client_id,
-                                             client_secret=client_secret,
-                                             app_url=app_url)
-
-        program_name = options.name
-        if program_name == None:
-            program_name = 'jut-tools program %s' % int(time.time())
-
-        if options.format == 'json':
-            point_before = False
-
-            if not options.persist:
-                info('[')
-
-            for points in data_engine.run(juttle,
-                                          deployment_name,
-                                          program_name=program_name,
-                                          persist=options.persist,
-                                          access_token=access_token,
-                                          app_url=app_url):
-
-                for point in points:
-                    if point_before:
-                        info(',')
-                    info(json.dumps(point, indent=4))
-                    point_before = True
-
-            if not options.persist:
-                info(']')
-
-        elif options.format == 'text':
-            for points in data_engine.run(juttle,
-                                          deployment_name,
-                                          program_name=program_name,
-                                          persist=options.persist,
-                                          access_token=access_token,
-                                          app_url=app_url):
-                for point in points:
-                    line = []
-                    if 'time' in point:
-                        timestamp = point['time']
-                        del point['time']
-                        line.append(timestamp)
-
-                    keys = sorted(point.keys())
-                    line += [str(point[key]) for key in keys]
-                    info(' '.join(line))
-
-    else:
-        raise Exception('Unexpected jut command "%s"' % options.command)
-
+    except JutException as exception:
+        error(str(exception))
+        sys.exit(255)
 
 if __name__ == '__main__':
     main()

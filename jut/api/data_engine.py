@@ -11,6 +11,7 @@ from websocket import create_connection
 
 from jut import defaults
 from jut.api import auth, deployments
+from jut.exceptions import JutException
 from jut.common import debug
 
 
@@ -114,12 +115,12 @@ def run(juttle,
                              headers=headers)
 
     if response.status_code != 200:
-        raise Exception("Error %s: %s" % (response.status_code, response.text))
+        raise JutException("Error %s: %s" % (response.status_code, response.text))
 
     job_info = response.json()
 
     if 'code' in job_info:
-        raise Exception("Error %s" % json.dumps(job_info, indent=2))
+        raise JutException("Error %s" % json.dumps(job_info, indent=2))
 
     debug('started job %s', json.dumps(job_info, indent=2))
 
