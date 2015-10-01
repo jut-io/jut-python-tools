@@ -2,30 +2,64 @@
 """
 
 import sys
+import os
 
-DEBUG = False
+DEBUG = os.environ.get('JUT_DEBUG', False)
 
-def info(message, *kwargs):
-    if len(kwargs) == 0:
+def info(message, *args, **kwargs):
+    """
+    write a message to stdout
+
+    """
+    if 'end' in kwargs:
+        end = kwargs['end']
+    else:
+        end = '\n'
+
+    if len(args) == 0:
         sys.stdout.write(message)
     else:
-        sys.stdout.write(message % kwargs)
-    sys.stdout.write('\n')
+        sys.stdout.write(message % args)
+    sys.stdout.write(end)
     sys.stdout.flush()
 
-def error(message, *kwargs):
-    if len(kwargs) == 0:
+
+def error(message, *args, **kwargs):
+    """
+    write a message to stderr
+
+    """
+    if 'end' in kwargs:
+        end = kwargs['end']
+    else:
+        end = '\n'
+
+    if len(args) == 0:
         sys.stderr.write(message)
     else:
-        sys.stderr.write(message % kwargs)
-    sys.stderr.write('\n')
+        sys.stderr.write(message % args)
+    sys.stderr.write(end)
     sys.stderr.flush()
 
-def debug(message, *kwargs):
+
+def debug(message, *args, **kwargs):
+    """
+    debug output goes to stderr so you can still redirect the stdout to a file
+    or another program. Controlled by the JUT_DEBUG environment variable being
+    present
+
+    """
+    if 'end' in kwargs:
+        end = kwargs['end']
+    else:
+        end = '\n'
+
     if DEBUG: 
-        if len(kwargs) == 0:
-            sys.stdout.write(message)
+        if len(args) == 0:
+            sys.stderr.write(message)
         else:
-            sys.stdout.write(message % kwargs)
-        sys.stdout.write('\n')
-        sys.stdout.flush()
+            sys.stderr.write(message % args)
+
+        sys.stderr.write(end)
+        sys.stderr.flush()
+

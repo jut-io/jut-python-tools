@@ -72,7 +72,20 @@ def run(juttle,
         access_token=None,
         app_url=defaults.APP_URL):
     """
-    run a juttle program through the juttle streaming API
+    run a juttle program through the juttle streaming API and return the 
+    relevant information from running import that program as a generator of
+    events which include:
+
+        * { "points": [ array of points ] }
+        * {
+            "error": true,
+            payload with "info" and "context" explaining exact error
+          }
+        * {
+            "warning": true,
+            payload with "info" and "context" explaining exact warning
+          }
+        * ...
 
     juttle: juttle program to execute
     deployment_name: the deployment name to execute the program on
@@ -115,12 +128,13 @@ def run(juttle,
                              headers=headers)
 
     if response.status_code != 200:
-        raise JutException("Error %s: %s" % (response.status_code, response.text))
+        yield {
+            "error": True,
+            "context": response.json()
+        }
+        return
 
     job_info = response.json()
-
-    if 'code' in job_info:
-        raise JutException("Error %s" % json.dumps(job_info, indent=2))
 
     debug('started job %s', json.dumps(job_info, indent=2))
 
@@ -134,29 +148,21 @@ def run(juttle,
 
         while not job_finished and not sinks_finished:
             data = json.loads(websocket.recv())
-            debug('received %s' % data)
+            debug('received %s' % json.dumps(data, indent=2))
 
-            if 'sink' in data.keys():
+            if 'eof' in data.keys():
                 sink_channel = data['sink']
 
-                if 'points' in data.keys():
-                    yield data['points']
-
-                elif 'eof' in data.keys():
-                    for sink in sinks:
-                        if sink['channel'] == sink_channel:
-                            sink['done'] = True
-                            break
-
-                elif 'tick' in data.keys():
-                    pass
+                for sink in sinks:
+                    if sink['channel'] == sink_channel:
+                        sink['done'] = True
 
             if 'ping' in data.keys():
                 # ping/pong (ie heartbeat) mechanism
                 debug('ping received on websocket')
                 pong_obj = {'pong': True}
                 websocket.send(json.dumps(pong_obj))
-                debug('sent pong')
+                debug('pong sent in response')
 
             if 'job_end' in data.keys() and data['job_end'] == True:
                 job_finished = True
@@ -164,6 +170,8 @@ def run(juttle,
             for sink in sinks:
                 sinks_finished &= sink['done']
 
+            # return all channel messages
+            yield data
+
     websocket.close()
- 
 

@@ -30,7 +30,7 @@ setup(
 
     packages=find_packages(exclude=['tests']),
     license='MIT License',
-    description='jut command lines tools',
+    description='jut command line tools',
 
     # pypi doesn't support markdown so we can't push the README.md as is
     long_description='https://github.com/jut-io/jut-python-tools/blob/master/README.md',

@@ -11,17 +11,41 @@ from util import jut
 class JutRunTests(unittest.TestCase):
 
 
-    def test_jut_run_emitter_to_json(self):
+    def test_jut_run_syntatically_incorrect_program_reports_error_with_format_json(self):
+        """
+        verify an invalid program reports the failure correctly
+
+        """
+
+        stdout, stderr = jut('run', 'foo', '-f', 'json', exit_code=255)
+        self.assertTrue('Error line 1, column 1 of main: Error: no such sub: foo' in stderr)
+
+        # stdout should still contain a valid JSON object
+        self.assertEqual(stdout, '[\n]\n')
+
+
+    def test_jut_run_syntatically_incorrect_program_reports_error_with_format_text(self):
+        """
+        verify an invalid program reports the failure correctly
+
+        """
+
+        stdout, stderr = jut('run', 'foo', '-f', 'text', exit_code=255)
+        self.assertTrue('Error line 1, column 1 of main: Error: no such sub: foo' in stderr)
+        self.assertEqual(stdout.strip(), '')
+
+
+    def test_jut_run_emit_to_json(self):
         """
         use jut to run the juttle program:
 
-            emitter -from :2014-01-01T00:00:00.000Z: -limit 5
+            emit -from :2014-01-01T00:00:00.000Z: -limit 5
 
         and verify the output is JSON format
         """
 
         stdout, stderr = jut('run',
-                             'emitter -from :2014-01-01T00:00:00.000Z: -limit 5')
+                             'emit -from :2014-01-01T00:00:00.000Z: -limit 5')
 
         points = json.loads(stdout)
 
@@ -36,18 +60,18 @@ class JutRunTests(unittest.TestCase):
                          ])
 
 
-    def test_jut_run_emittert_to_text(self):
+    def tesu_jut_run_emit_to_text(self):
         """
         use jut to run the juttle program:
 
-            emitter -from :2014-01-01T00:00:00.000Z: -limit 5
+            emit -from :2014-01-01T00:00:00.000Z: -limit 5
 
         and verify the output is in the text format
         """
 
         stdout, stderr = jut('run',
                              '--format', 'text',
-                             'emitter -from :2014-01-01T00:00:00.000Z: -limit 5')
+                             'emit -from :2014-01-01T00:00:00.000Z: -limit 5')
 
         self.assertEquals(stderr, '')
         self.assertEqual(stdout, '2014-01-01T00:00:00.000Z\n'
