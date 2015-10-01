@@ -35,6 +35,21 @@ the bleeding master code you can also use:
 **(*)** You may need to use `sudo` with the above commands if you are not using a
 virtualenv or don't have a userspace python installation.
 
+## Upgrading
+
+If attempting to upgrade to the latest and greatest build just add the `-U`
+option like so:
+
+```
+pip install -U jut-tools
+```
+
+or 
+
+```
+easy_install -U jut-tools
+```
+
 ## Configuration
 
 Once you've installed the jut python tools you should immediately run:
