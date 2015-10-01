@@ -71,8 +71,8 @@ def default_configuration(interactive=True):
             configuration = config.get_default()
 
             default_deployment(configuration['app_url'],
-                            configuration['client_id'],
-                            configuration['client_secret'])
+                               configuration['client_id'],
+                               configuration['client_secret'])
 
 
 def add_configuration(options):
@@ -88,7 +88,7 @@ def add_configuration(options):
     if options.password != None:
         password = options.password
     else:
-        password = getpass.getpass('Pasword: ')
+        password = getpass.getpass('Password: ')
 
     if options.app_url != None:
         app_url = options.app_url
@@ -284,6 +284,12 @@ def main():
                                  'disconnecting form the running job (ie '
                                  'essentially backgrounding your program)')
 
+    run_parser.add_argument('-s', '--show-progress',
+                            action='store_true',
+                            default=False,
+                            help='writes the progress out to stderr on how '
+                                 'many points were streamed thus far')
+
     options = parser.parse_args()
 
     try:
@@ -389,12 +395,42 @@ def main():
             client_secret = configuration['client_secret']
 
             access_token = auth.get_access_token(client_id=client_id,
-                                                client_secret=client_secret,
-                                                app_url=app_url)
+                                                 client_secret=client_secret,
+                                                 app_url=app_url)
 
             program_name = options.name
             if program_name == None:
                 program_name = 'jut-tools program %s' % int(time.time())
+
+            total_points = 0
+
+            def show_progress():
+                if options.show_progress:
+                    error('streamed %s points', total_points, end='\r')
+
+            hit_an_error = False
+
+            def show_error_or_warning(data):
+                """
+                handle error and warning reporting
+
+                """
+                if 'error' in data:
+                    prefix = 'Error'
+
+                elif 'warning' in data:
+                    prefix = 'Warning'
+
+                else:
+                    raise Exception('Unexpected error/warning received %s' % data)
+
+                message = data['context']['message']
+                location = data['context']['info']['location']
+                line = location['start']['line']
+                column = location['start']['column']
+
+                error('%s line %s, column %s of %s: %s' %
+                      (prefix, line, column, location['filename'], message))
 
             if options.format == 'json':
                 point_before = False
@@ -402,40 +438,72 @@ def main():
                 if not options.persist:
                     info('[')
 
-                for points in data_engine.run(juttle,
-                                              deployment_name,
-                                              program_name=program_name,
-                                              persist=options.persist,
-                                              access_token=access_token,
-                                              app_url=app_url):
+                for data in data_engine.run(juttle,
+                                            deployment_name,
+                                            program_name=program_name,
+                                            persist=options.persist,
+                                            access_token=access_token,
+                                            app_url=app_url):
 
-                    for point in points:
-                        if point_before:
-                            info(',')
-                        info(json.dumps(point, indent=4))
-                        point_before = True
+                    if 'points' in data:
+                        points = data['points']
+                        for point in points:
+                            if point_before:
+                                info(',')
+                            info(json.dumps(point, indent=4))
+                            point_before = True
+
+                        total_points += len(points)
+
+                    elif 'error' in data:
+                        show_error_or_warning(data)
+                        hit_an_error = True
+
+                    elif 'warning' in data:
+                        show_error_or_warning(data)
+
+                    show_progress()
 
                 if not options.persist:
                     info(']')
 
             elif options.format == 'text':
-                for points in data_engine.run(juttle,
-                                              deployment_name,
-                                              program_name=program_name,
-                                              persist=options.persist,
-                                              access_token=access_token,
-                                              app_url=app_url):
-                    for point in points:
-                        line = []
-                        if 'time' in point:
-                            timestamp = point['time']
-                            del point['time']
-                            line.append(timestamp)
+                for data in data_engine.run(juttle,
+                                            deployment_name,
+                                            program_name=program_name,
+                                            persist=options.persist,
+                                            access_token=access_token,
+                                            app_url=app_url):
 
-                        keys = sorted(point.keys())
-                        line += [str(point[key]) for key in keys]
-                        info(' '.join(line))
+                    if 'points' in data:
+                        points = data['points']
+                        for point in points:
+                            line = []
+                            if 'time' in point:
+                                timestamp = point['time']
+                                del point['time']
+                                line.append(timestamp)
 
+                            keys = sorted(point.keys())
+                            line += [str(point[key]) for key in keys]
+                            info(' '.join(line))
+
+                        total_points += len(points)
+
+                    elif 'error' in data:
+                        show_error_or_warning(data)
+                        hit_an_error = True
+
+                    elif 'warning' in data:
+                        show_error_or_warning(data)
+
+                    show_progress()
+
+            if options.show_progress:
+                error('')
+
+            if hit_an_error:
+                raise JutException('Error while running juttle, see above for details')
         else:
             raise Exception('Unexpected jut command "%s"' % options.command)
 

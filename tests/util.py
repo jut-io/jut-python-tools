@@ -22,12 +22,13 @@ def jut(*args,
     lines that were written to each output
 
     """
-    stdout = []
-    stderr = []
+    stdout = ''
+    stderr = ''
 
     process = subprocess.Popen(['python', 'jut/cli.py'] + list(args),
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
+
     stdout, stderr = process.communicate()
 
     if 'exit_code' in kwargs:
