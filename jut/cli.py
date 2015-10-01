@@ -425,12 +425,22 @@ def main():
                     raise Exception('Unexpected error/warning received %s' % data)
 
                 message = data['context']['message']
-                location = data['context']['info']['location']
-                line = location['start']['line']
-                column = location['start']['column']
+                location = None
 
-                error('%s line %s, column %s of %s: %s' %
-                      (prefix, line, column, location['filename'], message))
+                # not all errors or warnings have location information
+                if 'location' in data['context']['info']:
+                    location = data['context']['info']['location']
+                    line = location['start']['line']
+                    column = location['start']['column']
+                else:
+                    prefix = '%s (%s)' % (prefix, message)
+                    message = data['context']['info']
+
+                if location != None:
+                    error('%s line %s, column %s of %s: %s' %
+                          (prefix, line, column, location['filename'], message))
+                else:
+                    error('%s: %s' % (prefix, message))
 
             if options.format == 'json':
                 point_before = False
