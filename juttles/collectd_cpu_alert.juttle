@@ -1,0 +1,12 @@
+/*
+ * Example juttle that you can execute using `jut run collecd_cpu_alert.juttle`
+ * and watch live for any host spending more than 90% average cpu over the
+ * course a minute with this live juttle program
+ */
+
+read -type 'metric' name='cpu.idle'
+| put value=100-value
+| reduce -every :1 minute: value=avg(value) by host
+| filter value > 0
+| put message="${time}: Average CPU usage on host ${host} over 90% at ${value} for the past minute"
+| keep message

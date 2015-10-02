@@ -1,7 +1,6 @@
 # jut-tools
 
-Command line tools for interacting with your Jut instance.
-
+Command line tools for interacting with your Jut instance.  
 ## Requirements
 
  * Python 2.7.9+
@@ -194,6 +193,89 @@ qa-selenium-node7
 qa-selenium-node8
 sauce0
 ```
+
+#### Look for errors in the events coming into your default space for the past 15 minutes
+
+```
+jut run -f text "read -last :15 minutes: 'error' | keep time, message"
+```
+
+May look something like this:
+
+```
+2015-10-02T01:04:40.807Z _make_request error  getaddrinfo ENOTFOUND
+2015-10-02T01:04:42.051Z Error obtaining access token: getaddrinfo ENOTFOUND
+2015-10-02T01:04:48.413Z Error obtaining access token: getaddrinfo ENOTFOUND
+2015-10-02T01:04:50.868Z ERROR [main] 2015-10-02 01:00:56,860 CassandraDaemon.java:202 - Directory /opt/jut/data/cassandra/commit_logs doesn't exist
+2015-10-02T01:04:50.868Z ERROR [main] 2015-10-02 01:00:56,836 CassandraDaemon.java:202 - Directory /opt/jut/data/cassandra/data doesn't exist
+2015-10-02T01:04:50.868Z ERROR [main] 2015-10-02 01:00:56,861 CassandraDaemon.java:202 - Directory /opt/jut/data/cassandra/cache doesn't exist
+2015-10-02T01:04:50.870Z [2015-10-02 01:02:26,268][INFO ][cluster.metadata         ] [node-6b6002a5-8462-48de-a93d-c24dd0ffcb98] [events-jut_internal@2015.10.02] creating index, cause [auto(bulk api)], templates [schema-template-iis, schema-template-jira, schema-template-log4j, schema-template-github_push, schema-template-event, schema-template-jut_server, schema-template-github_commit, schema-template-jut_job_event, schema-template-jut_event, schema-template-cisco, schema-template-linux_logfile, schema-template-pagerduty, schema-template-ruby_logger, schema-template-jira_change, schema-template-syslog, schema-template-web_access, schema-template-web_error], shards [1]/[0], mappings [schema-iis, _default_, schema-jut_server, schema-syslog, schema-pagerduty, schema-jira_change, schema-jut_event, schema-jut_job_event, schema-log4j, schema-cisco, schema-linux_logfile, schema-event, schema-jira, schema-web_error, schema-github_commit, schema-web_access, schema-github_push, schema-ruby_logger]
+2015-10-02T01:04:54.061Z Error obtaining access token: getaddrinfo ENOTFOUND
+2015-10-02T01:05:00.056Z Error obtaining access token: getaddrinfo ENOTFOUND
+2015-10-02T01:05:07.045Z _make_request error  getaddrinfo ENOTFOUND
+2015-10-02T01:05:07.045Z Error obtaining access token: getaddrinfo ENOTFOUND
+2015-10-02T01:05:10.702Z _make_request error  getaddrinfo ENOTFOUND
+2015-10-02T01:05:10.702Z Error obtaining access token: getaddrinfo ENOTFOUND
+2015-10-02T01:05:10.808Z Error obtaining access token: getaddrinfo ENOTFOUND
+2015-10-02T01:05:10.808Z _make_request error  getaddrinfo ENOTFOUND
+2015-10-02T01:05:11.708Z Error obtaining access token: getaddrinfo ENOTFOUND
+2015-10-02T01:05:18.453Z Error obtaining access token: getaddrinfo ENOTFOUND
+2015-10-02T01:05:18.960Z Error obtaining access token: getaddrinfo ENOTFOUND
+2015-10-02T01:05:24.569Z (22846) error during import: Error: All connections on all I/O threads are busy
+2015-10-02T01:05:24.570Z (22846) request 127.0.0.1 "POST /api/v1/import/default HTTP/1.1" 503 71 "-" "-" 110.375 ms
+2015-10-02T01:05:24.571Z (22922) _make_request error  Received status code 503 from server.
+```
+
+#### Get a desktop notification when any collectd cpu usage is higher than 90% for over a minute
+
+```
+jut run "read -type 'metric' name='cpu.idle' | put value=100-value | reduce -every :1 minute: value=avg(value) | filter value > 90 | keep time, host, value"
+```
+
+Now the program is starting to get a little long so it may be best to simply
+stick the program in a file like so:
+
+```
+read -type 'metric' name='cpu.idle'
+| put value=100-value
+| reduce -every :1 minute: value=avg(value)
+| filter value > 90
+| put message="${time}: CPU usage on host ${host} over 90% at ${value} for the past minute"
+| keep message
+```
+
+Lets call it *collectd_cpu_alert.juttle* and then you can simply run this juttle
+like so:
+
+```
+jut run examples/collectd_cpu_alert.juttle 
+```
+
+And with a desktop notification:
+
+Try this first to test out the notification displays correctly
+
+ * on linux:
+   ```
+   jut run -f text "emit -limit 1 | put message='Hello World'" | xargs -I {} notify-send 'Testing' '{}'
+   ```
+
+ * on mac:
+   ```
+   jut run -f text "emit -limit 1 | put message='Hello World'" | xargs -I {} osascript -e display notification "%" with title "Testing" 
+   ```
+
+Then you can run the high CPU usage juttle like so:
+
+ * on linux:
+   ```
+   jut run -f text examples/collectd_cpu_alert.juttle | xargs notify-send "High CPU Usage" %
+   ```
+
+ * on mac:
+   ```
+   jut run -f text examples/collectd_cpu_alert.juttle | xargs osascript -e display notification "%" with title "High CPU Usage" 
+   ```
 
 ## Development
 
