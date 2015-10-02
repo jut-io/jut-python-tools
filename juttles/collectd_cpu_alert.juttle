@@ -4,9 +4,12 @@
  * course a minute with this live juttle program
  */
 
+const threshold = 90;
+const over_time = :1 minute:;
+
 read -type 'metric' name='cpu.idle'
 | put value=100-value
-| reduce -every :1 minute: value=avg(value) by host
-| filter value > 0
-| put message="${time}: Average CPU usage on host ${host} over 90% at ${value} for the past minute"
+| reduce -every over_time value=avg(value) by host
+| filter value > threshold
+| put message="${time}: Average CPU usage on host ${host} over ${threshold}% at ${value} for the past ${over_time}"
 | keep message

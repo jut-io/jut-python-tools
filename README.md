@@ -150,6 +150,19 @@ POST: [
 ```
 Removing the `--dry-run` and you'll push your data up to Jut in a jiffy.
 
+## Uploading a directory of JSON files
+
+Instead of building this type of feature into jut-tools we felt it was easier
+for you to use your trusty command line tools like so:
+
+```
+for I in `ls *.json`
+do
+    jut upload $I
+done
+```
+
+
 ### jut run
 
 **jut** also allows you to easily run **juttle** from the command line and use
