@@ -63,3 +63,11 @@ def debug(message, *args, **kwargs):
         sys.stderr.write(end)
         sys.stderr.flush()
 
+
+def is_debug_enabled():
+    """
+    useful method to know if debug is enabled or not and avoid constructing
+    costly messages to pass to the debug method itself
+
+    """
+    return DEBUG
