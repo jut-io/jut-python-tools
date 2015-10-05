@@ -5,7 +5,6 @@ main entry point for jut tools
 
 import argparse
 import getpass
-import json
 import os
 import sys
 import time
@@ -21,6 +20,7 @@ from jut.api import auth, \
 from jut.common import info, error
 from jut.exceptions import JutException
 from jut.util import uploader
+from jut.formatters import JSONFormatter, TextFormatter, CSVFormatter
 
 
 def parse_key_value(string):
@@ -271,7 +271,7 @@ def main():
 
     run_parser.add_argument('-f', '--format',
                             default='json',
-                            help='')
+                            help='available formats: json, text, csv')
 
     run_parser.add_argument('-n', '--name',
                             help='give your program a name to appear in the '
@@ -443,74 +443,46 @@ def main():
                     error('%s: %s' % (prefix, message))
 
             if options.format == 'json':
-                point_before = False
-
-                if not options.persist:
-                    info('[')
-
-                for data in data_engine.run(juttle,
-                                            deployment_name,
-                                            program_name=program_name,
-                                            persist=options.persist,
-                                            access_token=access_token,
-                                            app_url=app_url):
-
-                    if 'points' in data:
-                        points = data['points']
-                        for point in points:
-                            if point_before:
-                                info(',')
-                            info(json.dumps(point, indent=4))
-                            point_before = True
-
-                        total_points += len(points)
-
-                    elif 'error' in data:
-                        show_error_or_warning(data)
-                        hit_an_error = True
-
-                    elif 'warning' in data:
-                        show_error_or_warning(data)
-
-                    show_progress()
-
-                if not options.persist:
-                    info(']')
+                formatter = JSONFormatter(options)
 
             elif options.format == 'text':
-                for data in data_engine.run(juttle,
-                                            deployment_name,
-                                            program_name=program_name,
-                                            persist=options.persist,
-                                            access_token=access_token,
-                                            app_url=app_url):
+                formatter = TextFormatter(options)
 
-                    if 'points' in data:
-                        points = data['points']
-                        for point in points:
-                            line = []
-                            if 'time' in point:
-                                timestamp = point['time']
-                                del point['time']
-                                line.append(timestamp)
+            elif options.format == 'csv':
+                formatter = CSVFormatter(options)
 
-                            keys = sorted(point.keys())
-                            line += [str(point[key]) for key in keys]
-                            info(' '.join(line))
+            else:
+                raise JutException('Unsupported output format "%s"' %
+                                   options.format)
 
-                        total_points += len(points)
+            if not options.persist:
+                formatter.start()
 
-                    elif 'error' in data:
-                        show_error_or_warning(data)
-                        hit_an_error = True
+            for data in data_engine.run(juttle,
+                                        deployment_name,
+                                        program_name=program_name,
+                                        persist=options.persist,
+                                        access_token=access_token,
+                                        app_url=app_url):
 
-                    elif 'warning' in data:
-                        show_error_or_warning(data)
+                if 'points' in data:
+                    points = data['points']
+                    for point in points:
+                        formatter.point(point)
 
-                    show_progress()
+                    total_points += len(points)
 
-            if options.show_progress:
-                error('')
+                elif 'error' in data:
+                    show_error_or_warning(data)
+                    hit_an_error = True
+
+                elif 'warning' in data:
+                    show_error_or_warning(data)
+
+                show_progress()
+
+            if not options.persist:
+                formatter.stop()
 
             if hit_an_error:
                 raise JutException('Error while running juttle, see above for details')

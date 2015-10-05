@@ -6,14 +6,15 @@ basic set of `jut run` tests
 import json
 import unittest
 
-from util import jut
+from tests.util import jut
 
 class JutRunTests(unittest.TestCase):
 
 
     def test_jut_run_syntatically_incorrect_program_reports_error_with_format_json(self):
         """
-        verify an invalid program reports the failure correctly
+        verify an invalid program reports the failure correctly when using json
+        output format
 
         """
 
@@ -26,11 +27,24 @@ class JutRunTests(unittest.TestCase):
 
     def test_jut_run_syntatically_incorrect_program_reports_error_with_format_text(self):
         """
-        verify an invalid program reports the failure correctly
+        verify an invalid program reports the failure correctly when using text
+        output format
 
         """
 
         stdout, stderr = jut('run', 'foo', '-f', 'text', exit_code=255)
+        self.assertTrue('Error line 1, column 1 of main: Error: no such sub: foo' in stderr)
+        self.assertEqual(stdout.strip(), '')
+
+
+    def test_jut_run_syntatically_incorrect_program_reports_error_with_format_csv(self):
+        """
+        verify an invalid program reports the failure correctly when using csv
+        output format
+
+        """
+
+        stdout, stderr = jut('run', 'foo', '-f', 'csv', exit_code=255)
         self.assertTrue('Error line 1, column 1 of main: Error: no such sub: foo' in stderr)
         self.assertEqual(stdout.strip(), '')
 
@@ -41,7 +55,7 @@ class JutRunTests(unittest.TestCase):
 
             emit -from :2014-01-01T00:00:00.000Z: -limit 5
 
-        and verify the output is JSON format
+        and verify the output is in the expected JSON format
         """
 
         stdout, stderr = jut('run',
@@ -60,13 +74,13 @@ class JutRunTests(unittest.TestCase):
                          ])
 
 
-    def tesu_jut_run_emit_to_text(self):
+    def test_jut_run_emit_to_text(self):
         """
         use jut to run the juttle program:
 
             emit -from :2014-01-01T00:00:00.000Z: -limit 5
 
-        and verify the output is in the text format
+        and verify the output is in the expected text format
         """
 
         stdout, stderr = jut('run',
@@ -75,6 +89,28 @@ class JutRunTests(unittest.TestCase):
 
         self.assertEquals(stderr, '')
         self.assertEqual(stdout, '2014-01-01T00:00:00.000Z\n'
+                                 '2014-01-01T00:00:01.000Z\n'
+                                 '2014-01-01T00:00:02.000Z\n'
+                                 '2014-01-01T00:00:03.000Z\n'
+                                 '2014-01-01T00:00:04.000Z\n')
+
+
+    def test_jut_run_emit_to_csv(self):
+        """
+        use jut to run the juttle program:
+
+            emit -from :2014-01-01T00:00:00.000Z: -limit 5
+
+        and verify the output is in the expected csv format
+        """
+
+        stdout, stderr = jut('run',
+                             '--format', 'csv',
+                             'emit -from :2014-01-01T00:00:00.000Z: -limit 5')
+
+        self.assertEquals(stderr, '')
+        self.assertEqual(stdout, '#time\n'
+                                 '2014-01-01T00:00:00.000Z\n'
                                  '2014-01-01T00:00:01.000Z\n'
                                  '2014-01-01T00:00:02.000Z\n'
                                  '2014-01-01T00:00:03.000Z\n'

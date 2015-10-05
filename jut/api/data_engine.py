@@ -6,13 +6,13 @@ data engine API
 import json
 import random
 import requests
+import socket
 
 from websocket import create_connection
 
 from jut import defaults
 from jut.api import auth, deployments
-from jut.exceptions import JutException
-from jut.common import debug
+from jut.common import debug, is_debug_enabled
 
 
 def get_data_url(deployment_name,
@@ -72,19 +72,70 @@ def run(juttle,
         access_token=None,
         app_url=defaults.APP_URL):
     """
-    run a juttle program through the juttle streaming API and return the 
-    relevant information from running import that program as a generator of
-    events which include:
+    run a juttle program through the juttle streaming API and return the
+    the various events that are part of running a Juttle program which
+    include:
+        
+        
+        * Initial job status details including information to associate
+          multiple flowgraphs with their individual outputs (sinks):
+          {
+            "status": "ok",
+            "job": {
+              "channel_id": "56bde5f0",
+              "_start_time": "2015-10-03T06:59:49.233Z",
+              "alias": "jut-tools program 1443855588",
+              "_ms_begin": 1443855589233,
+              "user": "0fbbd98d-cf33-4582-8ca1-15a3d3fee510",
+              "timeout": 5,
+              "id": "b973bce6"
+            },
+            "now": "2015-10-03T06:59:49.230Z",
+            "stats": ...
+            "sinks": [
+              {
+                "location": {
+                  "start": {
+                    "column": 17,
+                    "line": 1,
+                    "offset": 16
+                  },
+                  "end": {
+                    "column": 24,
+                    "line": 1,
+                    "offset": 23
+                  },
+                  "filename": "main"
+                },
+                "name": "table",
+                "channel": "sink237",
+                "options": {
+                  "_jut_time_bounds": []
+                }
+              },
+              ... as many sinks as there are flowgrpahs in your program
+            ]
+           }
 
-        * { "points": [ array of points ] }
-        * {
+        * Each set of points returned along with the indication of which sink
+          they belong to:
+          {
+            "points": [ array of points ],
+            "sink": sink_id
+          }
+
+        * Error event indicating where in your program the error occurred
+          {
             "error": true,
             payload with "info" and "context" explaining exact error
           }
-        * {
+
+        * Warning event indicating where in your program the error occurred
+          {
             "warning": true,
             payload with "info" and "context" explaining exact warning
           }
+
         * ...
 
     juttle: juttle program to execute
@@ -106,15 +157,18 @@ def run(juttle,
     url = '%s/api/v1/juttle/channel' %data_url.replace('https://', 'wss://')
     token_obj = {"accessToken": access_token['access_token']}
 
-    debug("connecting to %s", url)
+    if is_debug_enabled():
+        debug("connecting to %s", url)
 
     websocket = create_connection(url)
+    websocket.settimeout(10)
     websocket.send(json.dumps(token_obj))
 
     data = websocket.recv()
     channel_id_obj = json.loads(data)
 
-    debug('got channel response %s', json.dumps(channel_id_obj, indent=4))
+    if is_debug_enabled():
+        debug('got channel response %s', json.dumps(channel_id_obj))
 
     channel_id = channel_id_obj['channel_id']
     juttle_job = {
@@ -136,39 +190,34 @@ def run(juttle,
 
     job_info = response.json()
 
-    debug('started job %s', json.dumps(job_info, indent=2))
+    if is_debug_enabled():
+        # yield job_info so the caller to this method can figure out which sinks
+        # correlate to which flowgraphs
+        yield job_info
+        debug('started job %s', json.dumps(job_info))
+
+    pong = json.dumps({
+        'pong': True
+    })
 
     if not persist:
         job_finished = False
-        sinks_finished = False
-        sinks = job_info['sinks']
 
-        for sink in sinks:
-            sink['done'] = False
-
-        while not job_finished and not sinks_finished:
+        while not job_finished:
             data = json.loads(websocket.recv())
-            debug('received %s' % json.dumps(data, indent=2))
 
-            if 'eof' in data.keys():
-                sink_channel = data['sink']
-
-                for sink in sinks:
-                    if sink['channel'] == sink_channel:
-                        sink['done'] = True
+            if is_debug_enabled():
+                debug('received %s' % json.dumps(data))
 
             if 'ping' in data.keys():
                 # ping/pong (ie heartbeat) mechanism
-                debug('ping received on websocket')
-                pong_obj = {'pong': True}
-                websocket.send(json.dumps(pong_obj))
-                debug('pong sent in response')
+                websocket.send(pong)
+
+                if is_debug_enabled():
+                    debug('sent %s' % json.dumps(pong))
 
             if 'job_end' in data.keys() and data['job_end'] == True:
                 job_finished = True
-
-            for sink in sinks:
-                sinks_finished &= sink['done']
 
             # return all channel messages
             yield data

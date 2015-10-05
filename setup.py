@@ -17,7 +17,7 @@ setup(
 
     install_requires=[
         'requests==2.7.0',
-        'websocket-client==0.29.0',
+        'websocket-client==0.32.0',
         'memoized==0.2'
     ],
 
