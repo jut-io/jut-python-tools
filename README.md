@@ -275,7 +275,7 @@ Try this first to test out the notification displays correctly
 
  * on mac:
    ```
-   jut run -f text "emit -limit 1 | put message='Hello World'" | xargs -I {} osascript -e display notification "%" with title "Testing" 
+   jut run -f text "emit -limit 1 | put message='Hello World'" | xargs -I {} osascript -e 'display notification "%" with title "Testing"'
    ```
 
 Then you can run the high CPU usage juttle like so:
@@ -287,7 +287,7 @@ Then you can run the high CPU usage juttle like so:
 
  * on mac:
    ```
-   jut run -f text examples/collectd_cpu_alert.juttle | xargs osascript -e display notification "%" with title "High CPU Usage" 
+   jut run -f text examples/collectd_cpu_alert.juttle | xargs osascript -e 'display notification "%" with title "High CPU Usage"' 
    ```
 
 ## Development
