@@ -5,7 +5,7 @@ setup script
 
 from setuptools import setup, find_packages
 
-_VERSION = '0.4'
+_VERSION = '0.5'
 
 setup(
     name='jut-tools',
