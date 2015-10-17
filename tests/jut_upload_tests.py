@@ -46,10 +46,14 @@ class JutUploadTests(unittest.TestCase):
             json_file.write(json.dumps(data))
 
         webhook_url = get_webhook_url(JutUploadTests.test_space)
-        jut('upload',
-            json_filename,
-            '--url', webhook_url,
-            '--space', JutUploadTests.test_space)
+        process = jut('upload',
+                      json_filename,
+                      '--url', webhook_url,
+                      '--space', JutUploadTests.test_space,
+                      stdin=None)
+
+        status = process.wait()
+        self.assertEquals(status, 0)
 
         # read a few times till all the points appear as it takes a few seconds
         # before the data is committed permanently
@@ -57,19 +61,20 @@ class JutUploadTests(unittest.TestCase):
         retry = 0
         juttle = "read -space '%s' -last :5 minutes: tag='%s'" % \
                  (JutUploadTests.test_space, tag)
-        while len(points) < 10 and retry < 10:
-            stdout, stderr = jut('run', juttle)
 
-            points = json.loads(stdout)
+        while len(points) < 10 and retry < 10:
+            process = jut('run', juttle)
+            status = process.wait()
+            self.assertEquals(status, 0)
+            points = json.loads(process.read_output())
+            process.expect_eof()
             retry += 1
 
-        stdout, stderr = jut('run',
-                             '%s | reduce count()' % juttle)
-
-        points = json.loads(stdout)
-
-        self.assertEqual(stderr, '')
-        self.assertEqual(points, [{'count': 10}])
+        process = jut('run', '%s | reduce count()' % juttle)
+        status = process.wait()
+        self.assertEquals(status, 0)
+        points = json.loads(process.read_output())
+        process.expect_eof()
 
 
     def test_jut_upload_to_webhook_for_default_configuration(self):
@@ -90,9 +95,13 @@ class JutUploadTests(unittest.TestCase):
         with open(json_filename, 'w') as json_file:
             json_file.write(json.dumps(data))
 
-        jut('upload',
-            json_filename,
-            '--space', JutUploadTests.test_space)
+        process = jut('upload',
+                      json_filename,
+                      '--space', JutUploadTests.test_space,
+                      stdin=None)
+
+        status = process.wait()
+        self.assertEquals(status, 0)
 
         # read a few times till all the points appear as it takes a few seconds
         # before the data is committed permanently
@@ -100,17 +109,19 @@ class JutUploadTests(unittest.TestCase):
         retry = 0
         juttle = "read -space '%s' -last :5 minutes: tag='%s'" % \
                  (JutUploadTests.test_space, tag)
-        while len(points) < 10 and retry < 10:
-            stdout, stderr = jut('run', juttle)
 
-            points = json.loads(stdout)
+        while len(points) < 10 and retry < 10:
+            process = jut('run', juttle)
+            status = process.wait()
+            self.assertEquals(status, 0)
+            points = json.loads(process.read_output())
+            process.expect_eof()
             retry += 1
 
-        stdout, stderr = jut('run',
-                             '%s | reduce count()' % juttle)
-
-        points = json.loads(stdout)
-
-        self.assertEqual(stderr, '')
+        process = jut('run', '%s | reduce count()' % juttle)
+        status = process.wait()
+        self.assertEquals(status, 0)
+        points = json.loads(process.read_output())
+        process.expect_eof()
         self.assertEqual(points, [{'count': 10}])
 

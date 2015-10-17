@@ -1,7 +1,7 @@
 """
 environment details API
 
-NOT OFFICIAL API
+NOT OFFICIAL API - "here be dragons"
 """
 
 import memoized

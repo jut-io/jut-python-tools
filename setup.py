@@ -18,7 +18,8 @@ setup(
     install_requires=[
         'requests==2.7.0',
         'websocket-client==0.32.0',
-        'memoized==0.2'
+        'memoized==0.2',
+        'tabulate==0.7.5'
     ],
 
     test_suite='tests',

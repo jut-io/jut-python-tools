@@ -42,7 +42,7 @@ def create_user(name,
         raise JutException('Error %s: %s' % (response.status_code, response.text))
 
 
-def delete_user(account_id,
+def delete_user(username,
                 access_token=None,
                 app_url=defaults.APP_URL):
     """
@@ -50,6 +50,10 @@ def delete_user(account_id,
     user as only a user may delete him/her-self
 
     """
+    account_id = get_account_id(username,
+                                access_token=access_token,
+                                app_url=app_url)
+
     headers = auth.access_token_to_headers(access_token)
     auth_url = environment.get_auth_url(app_url=app_url)
     url = "%s/api/v1/accounts/%s" % (auth_url, account_id)
@@ -83,6 +87,27 @@ def get_account_id(username,
         raise JutException('Error %s; %s' % (response.status_code, response.text))
 
 
+def get_logged_in_account_id(access_token=None,
+                             app_url=defaults.APP_URL):
+    """
+    get the account id for logged in account of the provided access_token
+
+    """
+    headers = auth.access_token_to_headers(access_token)
+    auth_url = environment.get_auth_url(app_url=app_url)
+    url = "%s/api/v1/account" % auth_url
+
+    response = requests.get(url,
+                            headers=headers)
+
+    if response.status_code == 200:
+        return response.json()['id']
+
+    else:
+        raise JutException('Error %s; %s' % (response.status_code, response.text))
+
+
+
 def user_exists(username,
                 access_token=None,
                 app_url=defaults.APP_URL):
@@ -101,5 +126,27 @@ def user_exists(username,
         return True
     else:
         raise JutException('Error %s: %s' % (response.status_code, response.text))
+
+
+def get_accounts(account_ids,
+                 access_token=None,
+                 app_url=defaults.APP_URL):
+    """
+    get the account details for each of the account ids in the account_ids list
+
+    """
+    headers = auth.access_token_to_headers(access_token)
+    auth_url = environment.get_auth_url(app_url=app_url)
+
+    url = "%s/api/v1/accounts/%s" % (auth_url, ','.join(account_ids))
+
+    response = requests.get(url,
+                            headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+
+    else:
+        raise JutException('Error %s; %s' % (response.status_code, response.text))
 
 

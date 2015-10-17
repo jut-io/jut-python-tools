@@ -1,14 +1,16 @@
 """
-jut upload module
-
+jut upload command
 """
 
-import os
+import hashlib
 import json
 import requests
-import hashlib
+import sys
 
+from jut.api import auth, integrations
+from jut import config
 from jut.common import info
+
 
 # long lived requests session object to keep HTTP connections alive
 SESSION = requests.Session()
@@ -16,7 +18,6 @@ SESSION = requests.Session()
 def post(json_data,
          url,
          dry_run=False):
-
     """
     POST json data to the url provided and verify the requests was successful
 
@@ -89,4 +90,45 @@ def push_json_file(json_file,
         post(json_data,
              url,
              dry_run=dry_run)
+
+
+def upload_file(options):
+    if not sys.stdin.isatty():
+        json_file = sys.stdin
+
+    else:
+        json_file = open(options.source, 'r')
+
+    url = options.url
+
+    if url == None:
+        configuration = config.get_default()
+        app_url = configuration['app_url']
+
+        if options.deployment != None:
+            deployment_name = options.deployment
+        else:
+            deployment_name = configuration['deployment_name']
+
+        client_id = configuration['client_id']
+        client_secret = configuration['client_secret']
+
+        access_token = auth.get_access_token(client_id=client_id,
+                                             client_secret=client_secret,
+                                             app_url=app_url)
+
+        url = integrations.get_webhook_url(deployment_name,
+                                           space=options.space,
+                                           access_token=access_token,
+                                           app_url=app_url)
+
+    info('Pushing to %s' % url)
+    push_json_file(json_file,
+                   url,
+                   dry_run=options.dry_run,
+                   batch_size=options.batch_size,
+                   anonymize_fields=options.anonymize_fields,
+                   remove_fields=options.remove_fields,
+                   rename_fields=options.rename_fields)
+
 

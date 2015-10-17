@@ -8,6 +8,10 @@ import unittest
 
 from tests.util import jut
 
+BAD_PROGRAM = 'foo'
+BAD_PROGRAM_ERROR = 'Error line 1, column 1 of main: Error: no such sub: foo'
+
+
 class JutRunTests(unittest.TestCase):
 
 
@@ -17,12 +21,9 @@ class JutRunTests(unittest.TestCase):
         output format
 
         """
-
-        stdout, stderr = jut('run', 'foo', '-f', 'json', exit_code=255)
-        self.assertTrue('Error line 1, column 1 of main: Error: no such sub: foo' in stderr)
-
-        # stdout should still contain a valid JSON object
-        self.assertEqual(stdout, '[\n]\n')
+        process = jut('run', BAD_PROGRAM, '-f', 'json')
+        process.expect_status(255)
+        process.expect_error(BAD_PROGRAM_ERROR)
 
 
     def test_jut_run_syntatically_incorrect_program_reports_error_with_format_text(self):
@@ -31,10 +32,9 @@ class JutRunTests(unittest.TestCase):
         output format
 
         """
-
-        stdout, stderr = jut('run', 'foo', '-f', 'text', exit_code=255)
-        self.assertTrue('Error line 1, column 1 of main: Error: no such sub: foo' in stderr)
-        self.assertEqual(stdout.strip(), '')
+        process = jut('run', BAD_PROGRAM, '-f', 'text')
+        process.expect_status(255)
+        process.expect_error(BAD_PROGRAM_ERROR)
 
 
     def test_jut_run_syntatically_incorrect_program_reports_error_with_format_csv(self):
@@ -43,10 +43,9 @@ class JutRunTests(unittest.TestCase):
         output format
 
         """
-
-        stdout, stderr = jut('run', 'foo', '-f', 'csv', exit_code=255)
-        self.assertTrue('Error line 1, column 1 of main: Error: no such sub: foo' in stderr)
-        self.assertEqual(stdout.strip(), '')
+        process = jut('run', BAD_PROGRAM, '-f', 'json')
+        process.expect_status(255)
+        process.expect_error(BAD_PROGRAM_ERROR)
 
 
     def test_jut_run_emit_to_json(self):
@@ -57,13 +56,12 @@ class JutRunTests(unittest.TestCase):
 
         and verify the output is in the expected JSON format
         """
+        process = jut('run',
+                      'emit -from :2014-01-01T00:00:00.000Z: -limit 5')
+        process.expect_status(0)
+        points = json.loads(process.read_output())
+        process.expect_eof()
 
-        stdout, stderr = jut('run',
-                             'emit -from :2014-01-01T00:00:00.000Z: -limit 5')
-
-        points = json.loads(stdout)
-
-        self.assertEquals(stderr, '')
         self.assertEqual(points,
                          [
                              {'time': '2014-01-01T00:00:00.000Z'},
@@ -83,11 +81,13 @@ class JutRunTests(unittest.TestCase):
         and verify the output is in the expected text format
         """
 
-        stdout, stderr = jut('run',
-                             '--format', 'text',
-                             'emit -from :2014-01-01T00:00:00.000Z: -limit 5')
+        process = jut('run',
+                      '--format', 'text',
+                      'emit -from :2014-01-01T00:00:00.000Z: -limit 5')
+        process.expect_status(0)
+        stdout = process.read_output()
+        process.expect_eof()
 
-        self.assertEquals(stderr, '')
         self.assertEqual(stdout, '2014-01-01T00:00:00.000Z\n'
                                  '2014-01-01T00:00:01.000Z\n'
                                  '2014-01-01T00:00:02.000Z\n'
@@ -104,11 +104,13 @@ class JutRunTests(unittest.TestCase):
         and verify the output is in the expected csv format
         """
 
-        stdout, stderr = jut('run',
-                             '--format', 'csv',
-                             'emit -from :2014-01-01T00:00:00.000Z: -limit 5')
+        process = jut('run',
+                      '--format', 'csv',
+                      'emit -from :2014-01-01T00:00:00.000Z: -limit 5')
+        process.expect_status(0)
+        stdout = process.read_output()
+        process.expect_eof()
 
-        self.assertEquals(stderr, '')
         self.assertEqual(stdout, '#time\n'
                                  '2014-01-01T00:00:00.000Z\n'
                                  '2014-01-01T00:00:01.000Z\n'
