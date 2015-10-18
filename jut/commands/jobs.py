@@ -24,15 +24,22 @@ def _print_jobs(jobs, access_token, app_url, options):
     """
     accountids = set()
     for job in jobs:
-        accountids.add(job['user'])
+        if job['user'] != 'jut.internal.user':
+            accountids.add(job['user'])
 
-    accounts_details = accounts.get_accounts(accountids,
-                                             access_token=access_token,
-                                             app_url=app_url)
+    account_lookup = {
+        'jut.internal.user': {
+            'username': 'Jut Internal'
+        }
+    }
 
-    account_lookup = {}
-    for account in accounts_details['accounts']:
-        account_lookup[account['id']] = account
+    if accountids:
+        accounts_details = accounts.get_accounts(accountids,
+                                                 access_token=access_token,
+                                                 app_url=app_url)
+
+        for account in accounts_details['accounts']:
+            account_lookup[account['id']] = account
 
     if options.format == 'text':
         labels = OrderedDict()
@@ -86,8 +93,13 @@ def _print_jobs(jobs, access_token, app_url, options):
         for job in jobs:
             owner = account_lookup[job['user']]['username']
             persistent = 'YES' if job['timeout'] == 0 else 'NO'
+            name = ''
+
+            if 'alias' in job:
+                name = job['alias']
+
             table.append([job['id'],
-                          job['alias'],
+                          name,
                           owner,
                           job['_start_time'],
                           persistent])
