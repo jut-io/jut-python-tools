@@ -5,10 +5,92 @@ jut auth API
 
 import requests
 import json
+import time
 
 from jut import defaults
 from jut.api import environment
 from jut.exceptions import JutException
+from jut.common import debug, is_debug_enabled
+
+
+class TokenManager(object):
+    """
+    jut authentication token manager which handles the refreshing of auth
+    tokens as well as caching of valid authentication tokens
+    """
+
+    def __init__(self,
+                 username=None,
+                 password=None,
+                 client_id=None,
+                 client_secret=None,
+                 app_url=defaults.APP_URL):
+        """
+        get the access token (http://docs.jut.io/api-guide/#unique_171637733),
+        by either using the direct username, password combination or better yet by
+        using the authorization grant you generated on jut with the client_id,
+        client_secret combination
+
+        auth_url: auth url for the jut application (defaults to production)
+
+        Use either two of the following to authenticate:
+
+        username: username used to login to Jut
+        password: password used to login to Jut
+        client_id: client_id generated through the Jut application or using the
+                authorizations API
+        client_secret: client_secret generated through the Jut appliation or using
+                    the authorizations API
+        """
+        self.username = username
+        self.password = password
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.app_url = app_url
+
+        self.access_token = None
+        self.expires_at = 0
+
+    def is_access_token_expired(self):
+        """
+        check if the current access token is expired or not
+
+        """
+        return self.access_token == None or self.expires_at < time.time()
+
+    def get_access_token(self):
+        """
+        get a valid access token
+
+        """
+        if self.is_access_token_expired():
+
+            if is_debug_enabled():
+                debug('requesting new access_token')
+
+            token = get_access_token(username=self.username,
+                                     password=self.password,
+                                     client_id=self.client_id,
+                                     client_secret=self.client_secret,
+                                     app_url=self.app_url)
+
+            # lets make sure to refresh before we're halfway to expiring
+            self.expires_at = time.time() + token['expires_in']/2
+            self.access_token = token['access_token']
+
+        return self.access_token
+
+
+    def get_access_token_headers(self):
+        """
+        return the access token header
+
+        """
+        return {
+            'Authorization': 'Bearer %s' % self.get_access_token(),
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
 
 
 def get_access_token(username=None,
@@ -76,27 +158,4 @@ def get_access_token(username=None,
                            (response.status_code, response.text))
 
     return response.json()
-
-
-def access_token_to_headers(access_token):
-    """
-    return the necessary headers to interact with various Jut APIs with a valid
-    access token
-
-    access_token: the access token can be obtained with the auth.get_auth_token
-                  method
-    """
-
-    if access_token == None:
-        raise JutException('You must supply a valid access_token')
-
-    if access_token['token_type'] == 'Bearer':
-        return {
-            'Authorization': 'Bearer %s' % access_token['access_token'],
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
-    else:
-        raise JutException('Token not supported %s' % access_token)
-
 

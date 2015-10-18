@@ -3,8 +3,6 @@ jut config command
 
 """
 
-import sys
-
 from jut import config
 
 from jut.api import auth, authorizations, deployments
@@ -19,11 +17,11 @@ def default_deployment(app_url, client_id, client_secret):
     if app_url.strip() == '':
         app_url = 'https://app.jut.io'
 
-    access_token = auth.get_access_token(client_id=client_id,
-                                         client_secret=client_secret,
-                                         app_url=app_url)
+    token_manager = auth.TokenManager(client_id=client_id,
+                                      client_secret=client_secret,
+                                      app_url=app_url)
 
-    user_deployments = deployments.get_deployments(access_token=access_token,
+    user_deployments = deployments.get_deployments(token_manager=token_manager,
                                                    app_url=app_url)
 
     if len(user_deployments) > 1:
@@ -85,11 +83,11 @@ def add_configuration(options):
     if config.exists(section):
         raise JutException('Configuration for "%s" already exists' % section)
 
-    access_token = auth.get_access_token(username=username,
-                                         password=password,
-                                         app_url=app_url)
+    token_manager = auth.TokenManager(username=username,
+                                      password=password,
+                                      app_url=app_url)
 
-    client_id, client_secret = authorizations.get_authorization(access_token,
+    client_id, client_secret = authorizations.get_authorization(token_manager,
                                                                 app_url=app_url)
 
     deployment_name = default_deployment(app_url,

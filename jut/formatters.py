@@ -45,12 +45,12 @@ class JSONFormatter(Formatter):
     def point(self, point):
         if self.previous_point:
             info(',')
-        info(json.dumps(point, indent=4))
+        info(json.dumps(point, indent=2), end='')
         self.previous_point = True
 
     def stop(self):
         if not self.options.persist:
-            info(']')
+            info('\n]')
 
 class TextFormatter(Formatter):
 

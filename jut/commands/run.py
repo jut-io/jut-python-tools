@@ -32,9 +32,9 @@ def run_juttle(options):
     client_id = configuration['client_id']
     client_secret = configuration['client_secret']
 
-    access_token = auth.get_access_token(client_id=client_id,
-                                         client_secret=client_secret,
-                                         app_url=app_url)
+    token_manager = auth.TokenManager(client_id=client_id,
+                                      client_secret=client_secret,
+                                      app_url=app_url)
 
     program_name = options.name
     if program_name == None:
@@ -45,8 +45,6 @@ def run_juttle(options):
     def show_progress():
         if options.show_progress:
             error('streamed %s points', total_points, end='\r')
-
-    hit_an_error = False
 
     def show_error_or_warning(data):
         """
@@ -62,23 +60,27 @@ def run_juttle(options):
         else:
             raise Exception('Unexpected error/warning received %s' % data)
 
-        message = data['context']['message']
+        message = None
         location = None
 
-        # not all errors or warnings have location information
-        if 'location' in data['context']['info']:
-            location = data['context']['info']['location']
-            line = location['start']['line']
-            column = location['start']['column']
+        if 'context' in data:
+            message = data['context']['message']
+
+            # not all errors or warnings have location information
+            if 'location' in data['context']['info']:
+                location = data['context']['info']['location']
+                line = location['start']['line']
+                column = location['start']['column']
+
         else:
-            prefix = '%s (%s)' % (prefix, message)
-            message = data['context']['info']
+            message = '%s: %s' % (prefix, message)
 
         if location != None:
             error('%s line %s, column %s of %s: %s' %
                   (prefix, line, column, location['filename'], message))
+
         else:
-            error('%s: %s' % (prefix, message))
+            error(message)
 
     if options.format == 'json':
         formatter = JSONFormatter(options)
@@ -93,42 +95,62 @@ def run_juttle(options):
         raise JutException('Unsupported output format "%s"' %
                            options.format)
 
-    if not options.persist:
-        formatter.start()
+    done = False
+    with_errors = False
+    max_retries = options.retry
+    retry_delay = options.retry_delay
+    retry = 0
 
-    for data in data_engine.run(juttle,
-                                deployment_name,
-                                program_name=program_name,
-                                persist=options.persist,
-                                access_token=access_token,
-                                app_url=app_url):
+    while not done:
+        try:
+            if not options.persist:
+                formatter.start()
 
-        if 'job' in data:
-            # job details
-            if options.persist:
-                # lets print the job id
-                info(data['job']['id'])
+            for data in data_engine.run(juttle,
+                                        deployment_name,
+                                        program_name=program_name,
+                                        persist=options.persist,
+                                        token_manager=token_manager,
+                                        app_url=app_url):
+                show_progress()
 
-        if 'points' in data:
-            points = data['points']
-            for point in points:
-                formatter.point(point)
+                if 'job' in data:
+                    # job details
+                    if options.persist:
+                        # lets print the job id
+                        info(data['job']['id'])
 
-            total_points += len(points)
+                if 'points' in data:
+                    points = data['points']
+                    for point in points:
+                        formatter.point(point)
 
-        elif 'error' in data:
-            show_error_or_warning(data)
-            hit_an_error = True
+                    total_points += len(points)
 
-        elif 'warning' in data:
-            show_error_or_warning(data)
+                elif 'error' in data:
+                    show_error_or_warning(data)
+                    with_errors = True
 
-        show_progress()
+                elif 'warning' in data:
+                    show_error_or_warning(data)
 
-    if not options.persist:
-        formatter.stop()
+            done = True
 
-    if hit_an_error:
-        raise JutException('Error while running juttle, see above for details')
+        except JutException:
+            retry += 1
 
+            if max_retries != -1 and retry > max_retries:
+                raise
 
+            time.sleep(retry_delay)
+
+        finally:
+            if options.show_progress:
+                # one enter to retain the last value of progress output
+                info('')
+
+            if not options.persist:
+                formatter.stop()
+
+            if with_errors:
+                raise JutException('Error while running juttle')
