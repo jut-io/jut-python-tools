@@ -7,8 +7,9 @@ import json
 import requests
 import sys
 
-from jut.api import auth, integrations
 from jut import config
+
+from jut.api import auth, integrations
 from jut.common import info
 
 
@@ -113,13 +114,13 @@ def upload_file(options):
         client_id = configuration['client_id']
         client_secret = configuration['client_secret']
 
-        access_token = auth.get_access_token(client_id=client_id,
-                                             client_secret=client_secret,
-                                             app_url=app_url)
+        token_manager = auth.TokenManager(client_id=client_id,
+                                          client_secret=client_secret,
+                                          app_url=app_url)
 
         url = integrations.get_webhook_url(deployment_name,
                                            space=options.space,
-                                           access_token=access_token,
+                                           token_manager=token_manager,
                                            app_url=app_url)
 
     info('Pushing to %s' % url)

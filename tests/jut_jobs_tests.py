@@ -4,6 +4,7 @@ basic set of `jut jobs` tests
 """
 
 import re
+import signal
 import unittest
 
 from tests.util import jut, \
@@ -33,6 +34,11 @@ class JutJobsTests(unittest.TestCase):
                                           'jut-tools-user02%s@jut-tools.test',
                                           'bigdata')
 
+        create_user_in_default_deployment('Jut Tools User #3',
+                                          'jut-tools-user03',
+                                          'jut-tools-user03%s@jut-tools.test',
+                                          'bigdata')
+
         create_space_in_default_deployment(JutJobsTests.test_space)
 
 
@@ -41,6 +47,7 @@ class JutJobsTests(unittest.TestCase):
         delete_space_from_default_deployment(JutJobsTests.test_space)
         delete_user_from_default_deployment('jut-tools-user01', 'bigdata')
         delete_user_from_default_deployment('jut-tools-user02', 'bigdata')
+        delete_user_from_default_deployment('jut-tools-user03', 'bigdata')
 
 
     def test_jut_jobs_list_with_no_running_jobs(self):
@@ -138,4 +145,60 @@ class JutJobsTests(unittest.TestCase):
             process = jut('jobs', 'list')
             process.expect_status(0)
             process.expect_error('No running jobs')
+
+
+    def test_jut_jobs_connect_on_persistent_job(self):
+        """
+        verify we can reconnect to a persistent job
+
+        """
+        with temp_jut_tools_home():
+            configuration = config.get_default()
+            app_url = configuration['app_url']
+
+            process = jut('config',
+                          'add',
+                          '-u', 'jut-tools-user03',
+                          '-p', 'bigdata',
+                          '-a', app_url,
+                          '-d')
+            process.expect_status(0)
+
+            process = jut('run',
+                          '--name', 'Persistent Job #3',
+                          '-p',
+                          'emit -limit 10000 '
+                          '| put source_type="event", foo="bar"'
+                          '| (write -space "%s"; keep foo | pass)' %
+                          JutJobsTests.test_space)
+
+            process.expect_status(0)
+            job_id = process.read_output().strip()
+
+            process = jut('jobs',
+                          'connect',
+                          job_id,
+                          '-f', 'text')
+
+            # verify that we output 'bar' a few times
+            process.expect_output('bar\n')
+            process.expect_output('bar\n')
+            process.expect_output('bar\n')
+            process.expect_output('bar\n')
+            process.expect_output('bar\n')
+
+            process.send_signal(signal.SIGTERM)
+            process.expect_status(-signal.SIGTERM)
+
+            process = jut('jobs',
+                          'kill',
+                          job_id,
+                          '-y')
+            process.expect_status(0)
+            process.expect_eof()
+
+            process = jut('jobs', 'list')
+            process.expect_status(0)
+            process.expect_error('No running jobs')
+
 

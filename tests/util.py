@@ -184,7 +184,13 @@ class Spawn(object):
         """
         return self.process.wait()
 
+
     def expect_status(self, expected_status):
+        """
+        expect the provided status exit code otherwise output the full stdout
+        and stderr output at that specific point in time
+
+        """
         status = self.wait()
 
         if status != expected_status:
@@ -192,6 +198,14 @@ class Spawn(object):
             error(self.read_error())
             raise Exception('Expected status %s, got %s' % (expected_status, status))
 
+
+    def send_signal(self, signal_name):
+        """
+        send the signal provided to the currently running process
+
+        """
+
+        self.process.send_signal(signal_name)
 
 def jut(*args,
         **kwargs):
@@ -223,9 +237,9 @@ def create_user_in_default_deployment(name, username, email, password):
     client_id = configuration['client_id']
     client_secret = configuration['client_secret']
 
-    access_token = auth.get_access_token(client_id=client_id,
-                                         client_secret=client_secret,
-                                         app_url=app_url)
+    token_manager = auth.TokenManager(client_id=client_id,
+                                      client_secret=client_secret,
+                                      app_url=app_url)
 
     delete_user_from_default_deployment(username, password)
 
@@ -233,12 +247,12 @@ def create_user_in_default_deployment(name, username, email, password):
                          username,
                          email,
                          password,
-                         access_token=access_token,
+                         token_manager=token_manager,
                          app_url=app_url)
 
     deployments.add_user(username,
                          deployment_name,
-                         access_token=access_token,
+                         token_manager=token_manager,
                          app_url=app_url)
 
 
@@ -251,20 +265,20 @@ def delete_user_from_default_deployment(username, password):
     client_id = configuration['client_id']
     client_secret = configuration['client_secret']
 
-    access_token = auth.get_access_token(client_id=client_id,
-                                         client_secret=client_secret,
-                                         app_url=app_url)
+    token_manager = auth.TokenManager(client_id=client_id,
+                                      client_secret=client_secret,
+                                      app_url=app_url)
 
     if accounts.user_exists(username,
-                            access_token=access_token,
+                            token_manager=token_manager,
                             app_url=app_url):
 
-        delete_access_token = auth.get_access_token(username=username,
-                                                    password=password,
-                                                    app_url=app_url)
+        delete_token_manager = auth.TokenManager(username=username,
+                                                 password=password,
+                                                 app_url=app_url)
 
         accounts.delete_user(username,
-                             access_token=delete_access_token,
+                             token_manager=delete_token_manager,
                              app_url=app_url)
 
 
@@ -280,16 +294,16 @@ def get_webhook_url(space):
     client_id = configuration['client_id']
     client_secret = configuration['client_secret']
 
-    access_token = auth.get_access_token(client_id=client_id,
-                                         client_secret=client_secret,
-                                         app_url=app_url)
+    token_manager = auth.TokenManager(client_id=client_id,
+                                      client_secret=client_secret,
+                                      app_url=app_url)
 
     import_url = data_engine.get_import_data_url(deployment_name,
-                                                 access_token=access_token,
+                                                 token_manager=token_manager,
                                                  app_url=app_url)
 
     api_key = deployments.get_apikey(deployment_name,
-                                     access_token=access_token,
+                                     token_manager=token_manager,
                                      app_url=app_url)
 
     return '%s/api/v1/import/webhook/?space=%s&data_source=webhook&apikey=%s' % \
@@ -304,19 +318,19 @@ def create_space_in_default_deployment(space_name):
     client_id = configuration['client_id']
     client_secret = configuration['client_secret']
 
-    access_token = auth.get_access_token(client_id=client_id,
-                                         client_secret=client_secret,
-                                         app_url=app_url)
+    token_manager = auth.TokenManager(client_id=client_id,
+                                      client_secret=client_secret,
+                                      app_url=app_url)
 
     if deployments.space_exists(deployment_name,
                                 space_name,
-                                access_token=access_token,
+                                token_manager=token_manager,
                                 app_url=app_url):
         delete_space_from_default_deployment(space_name)
 
     deployments.create_space(deployment_name,
                              space_name,
-                             access_token=access_token,
+                             token_manager=token_manager,
                              app_url=app_url)
 
     time.sleep(SPACE_CREATE_TIMEOUT)
@@ -330,13 +344,13 @@ def delete_space_from_default_deployment(space_name):
     client_id = configuration['client_id']
     client_secret = configuration['client_secret']
 
-    access_token = auth.get_access_token(client_id=client_id,
-                                         client_secret=client_secret,
-                                         app_url=app_url)
+    token_manager = auth.TokenManager(client_id=client_id,
+                                      client_secret=client_secret,
+                                      app_url=app_url)
 
     deployments.delete_space(deployment_name,
                              space_name,
-                             access_token=access_token,
+                             token_manager=token_manager,
                              app_url=app_url)
 
 

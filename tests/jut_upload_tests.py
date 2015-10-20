@@ -51,9 +51,7 @@ class JutUploadTests(unittest.TestCase):
                       '--url', webhook_url,
                       '--space', JutUploadTests.test_space,
                       stdin=None)
-
-        status = process.wait()
-        self.assertEquals(status, 0)
+        process.expect_status(0)
 
         # read a few times till all the points appear as it takes a few seconds
         # before the data is committed permanently
@@ -64,15 +62,13 @@ class JutUploadTests(unittest.TestCase):
 
         while len(points) < 10 and retry < 10:
             process = jut('run', juttle)
-            status = process.wait()
-            self.assertEquals(status, 0)
+            process.expect_status(0)
             points = json.loads(process.read_output())
             process.expect_eof()
             retry += 1
 
         process = jut('run', '%s | reduce count()' % juttle)
-        status = process.wait()
-        self.assertEquals(status, 0)
+        process.expect_status(0)
         points = json.loads(process.read_output())
         process.expect_eof()
 
@@ -100,8 +96,7 @@ class JutUploadTests(unittest.TestCase):
                       '--space', JutUploadTests.test_space,
                       stdin=None)
 
-        status = process.wait()
-        self.assertEquals(status, 0)
+        process.expect_status(0)
 
         # read a few times till all the points appear as it takes a few seconds
         # before the data is committed permanently
@@ -112,15 +107,13 @@ class JutUploadTests(unittest.TestCase):
 
         while len(points) < 10 and retry < 10:
             process = jut('run', juttle)
-            status = process.wait()
-            self.assertEquals(status, 0)
+            process.expect_status(0)
             points = json.loads(process.read_output())
             process.expect_eof()
             retry += 1
 
         process = jut('run', '%s | reduce count()' % juttle)
-        status = process.wait()
-        self.assertEquals(status, 0)
+        process.expect_status(0)
         points = json.loads(process.read_output())
         process.expect_eof()
         self.assertEqual(points, [{'count': 10}])

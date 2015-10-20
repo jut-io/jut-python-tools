@@ -133,6 +133,42 @@ def main():
                           default=False,
                           help='kill without prompting for confirmation')
 
+    connect_job = jobs_commands.add_parser('connect',
+                                           help='connect to a persistent job')
+
+    connect_job.add_argument('job_id',
+                             help='specify the job_id to connect to')
+
+    connect_job.add_argument('-d', '--deployment',
+                             default=None,
+                             help='specify the deployment name')
+
+    connect_job.add_argument('-a', '--app-url',
+                             default=defaults.APP_URL,
+                             help='app url (default: https://app.jut.io INTERNAL USE)')
+
+    connect_job.add_argument('-s', '--show-progress',
+                             action='store_true',
+                             default=False,
+                             help='writes the progress out to stderr on how '
+                                  'many points were streamed thus far')
+
+    connect_job.add_argument('--retry',
+                             type=int,
+                             default=0,
+                             help='retry running the program N times,'
+                                  'default 0. Use -1 to retry forever.')
+
+    connect_job.add_argument('--retry-delay',
+                             type=int,
+                             default=10,
+                             help='number of seconds to wait between retries.')
+
+    connect_job.add_argument('-f', '--format',
+                             default='json',
+                             help='available formats are json, text, csv with '
+                                  'default: json')
+
     # upload commands
     upload_parser = commands.add_parser('upload',
                                         help='upload local JSON file(s) to Jut')
@@ -223,6 +259,7 @@ def main():
 
     run_parser.add_argument('-p', '--persist',
                             action='store_true',
+                            default=False,
                             help='allow the program containing background '
                                  'outputs to become a persistent job by '
                                  'disconnecting form the running job (ie '
@@ -233,6 +270,17 @@ def main():
                             default=False,
                             help='writes the progress out to stderr on how '
                                  'many points were streamed thus far')
+
+    run_parser.add_argument('--retry',
+                            type=int,
+                            default=0,
+                            help='retry running the program N times,'
+                                 'default 0. Use -1 to retry forever.')
+
+    run_parser.add_argument('--retry-delay',
+                            type=int,
+                            default=10,
+                            help='number of seconds to wait between retries.')
 
     options = parser.parse_args()
 
@@ -256,6 +304,9 @@ def main():
 
             elif options.jobs_subcommand == 'kill':
                 jobs.kill(options)
+            
+            elif options.jobs_subcommand == 'connect':
+                jobs.connect(options)
 
         elif options.subcommand == 'upload':
             upload.upload_file(options)

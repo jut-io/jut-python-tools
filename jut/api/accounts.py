@@ -6,7 +6,7 @@ import requests
 import json
 
 from jut import defaults
-from jut.api import auth, environment
+from jut.api import environment
 from jut.exceptions import JutException
 
 
@@ -14,13 +14,13 @@ def create_user(name,
                 username,
                 email,
                 password,
-                access_token=None,
+                token_manager=None,
                 app_url=defaults.APP_URL):
     """
     create a new user with the specified name, username email and password
 
     """
-    headers = auth.access_token_to_headers(access_token)
+    headers = token_manager.get_access_token_headers()
     auth_url = environment.get_auth_url(app_url=app_url)
     url = "%s/api/v1/accounts" % auth_url
 
@@ -43,7 +43,7 @@ def create_user(name,
 
 
 def delete_user(username,
-                access_token=None,
+                token_manager=None,
                 app_url=defaults.APP_URL):
     """
     delete a user by its account_id and with the access_token from that same
@@ -51,10 +51,10 @@ def delete_user(username,
 
     """
     account_id = get_account_id(username,
-                                access_token=access_token,
+                                token_manager=token_manager,
                                 app_url=app_url)
 
-    headers = auth.access_token_to_headers(access_token)
+    headers = token_manager.get_access_token_headers()
     auth_url = environment.get_auth_url(app_url=app_url)
     url = "%s/api/v1/accounts/%s" % (auth_url, account_id)
     response = requests.delete(url, headers=headers)
@@ -67,13 +67,13 @@ def delete_user(username,
 
 
 def get_account_id(username,
-                   access_token=None,
+                   token_manager=None,
                    app_url=defaults.APP_URL):
     """
     get the account id for the username specified
 
     """
-    headers = auth.access_token_to_headers(access_token)
+    headers = token_manager.get_access_token_headers()
     auth_url = environment.get_auth_url(app_url=app_url)
     url = "%s/api/v1/accounts?username=%s" % (auth_url, username)
 
@@ -87,13 +87,13 @@ def get_account_id(username,
         raise JutException('Error %s; %s' % (response.status_code, response.text))
 
 
-def get_logged_in_account_id(access_token=None,
+def get_logged_in_account_id(token_manager=None,
                              app_url=defaults.APP_URL):
     """
     get the account id for logged in account of the provided access_token
 
     """
-    headers = auth.access_token_to_headers(access_token)
+    headers = token_manager.get_access_token_headers()
     auth_url = environment.get_auth_url(app_url=app_url)
     url = "%s/api/v1/account" % auth_url
 
@@ -109,13 +109,13 @@ def get_logged_in_account_id(access_token=None,
 
 
 def user_exists(username,
-                access_token=None,
+                token_manager=None,
                 app_url=defaults.APP_URL):
     """
     check if the user exists with the specified username
 
     """
-    headers = auth.access_token_to_headers(access_token)
+    headers = token_manager.get_access_token_headers()
     auth_url = environment.get_auth_url(app_url=app_url)
     url = "%s/api/v1/accounts?username=%s" % (auth_url, username)
     response = requests.get(url, headers=headers)
@@ -129,13 +129,13 @@ def user_exists(username,
 
 
 def get_accounts(account_ids,
-                 access_token=None,
+                 token_manager=None,
                  app_url=defaults.APP_URL):
     """
     get the account details for each of the account ids in the account_ids list
 
     """
-    headers = auth.access_token_to_headers(access_token)
+    headers = token_manager.get_access_token_headers()
     auth_url = environment.get_auth_url(app_url=app_url)
 
     url = "%s/api/v1/accounts/%s" % (auth_url, ','.join(account_ids))

@@ -11,14 +11,18 @@ Command line tools for interacting with your Jut instance.
     * [First time configuration](#first-time-configuration)
     * [Using multiple configurations](#using-multiple-configurations)
     * [Removing configurations](#removing-configurations)
-  * [Upload Command](#upload-command)
-    * [Upload a JSON file](#upload-a-json-file)
-    * [Uploading a directory of JSON files](#uploading-a-directory-of-json-files)
+  * [Jobs Command](#jobs-command)
+    * [Check which jobs are running](#check-which-jobs-are-running)
+    * [Kill a running job](#kill-a-running-job)
+    * [Connect to a persisten job](#connect-to-a-persistent-job)
   * [Run Command](#run-command)
     * [Getting JSON data out of Jut](#getting-json-data-out-of-jut)
     * [Getting a list of things out of Jut](#getting-a-list-of-things-out-of-jut)
     * [Reconstructing log lines from all your hosts with Jut](#reconstructing-log-lines-from-all-your-hosts-with-jut)
     * [Getting a desktop notification with Jut](#getting-a-desktop-notification-with-jut)
+  * [Upload Command](#upload-command)
+    * [Upload a JSON file](#upload-a-json-file)
+    * [Uploading a directory of JSON files](#uploading-a-directory-of-json-files)
   * [Development](#development)
     * [Running Tests](#running-tests)
     * [Running a specific test](#running-a-specific-test)
@@ -107,95 +111,61 @@ jut config rm
 And then follow the prompts to choose the correct configuration to remove.
 
 
-## Upload Command
+## Jobs Command
 
-### Upload a JSON file
+### Check which jobs are running
 
-To upload a JSON file containing multiple data points just use *jut* like
-so:
-
-```
-jut upload data.json [-space some-other-space]
-```
-
-The above will simply upload the data points contained in the JSON file to 
-the webhook connector listening on the default configuration.
-
-You can also pipe JSON data to *jut* and it will handle uploading points
-just fine:
+To see the list of jobs currently running:
 
 ```
-curl 'https://api.github.com/repos/nodejs/node/issues?page=1&per_page=100&state=all' -o issues1.json | \
-jut upload
+jut jobs list
 ```
 
-Would upload those last 100 issues returned from the github issues API for the
-*node* project.
+### Kill a running job
 
-Using `--dry-run` you can easily see what data you would have actually uploaded
-and also how using additional options affects your data. Take for example the 
-following simple JSON data:
-
-```
-[
-  {
-    "sha": "6908574bc2a0511084ee76f9e411bb9d",
-    "name": "Rod The Dog",
-    "email": "rod@jut.io",
-    "date": "2015-08-28T06:24:29Z",
-    "message": "Oh this is not going go well..."
-  }
-]
-```
-
-You could simply use `--dry-run` to see what the data would look like: 
+You'll need to run `jut jobs list` to get the job id or possibly have a job id 
+from persisting a job through the `jut run` command at which point you can kill
+the running job like so:
 
 ```
-> jut upload --dry-run                                                                        
-POST: [
-    {
-        "date": "2015-08-28T06:24:29Z", 
-        "sha": "6908574bc2a0511084ee76f9e411bb9d", 
-        "message": "Oh this is not going go well...", 
-        "name": "Rod The Dog", 
-        "email": "rod@jut.io"
-    }
-]
+jut jobs kill [your_job_id]
 ```
 
-Looking at that we realized we wanted to do a few things to our data points:
+### Connect to a persistent job
 
- 1. remove the `email` field
- 2. anonymize the `name` field
- 3. rename `date` to the required `time` field
+When you start a persistent job you may find yourself wondering if its hitting
+any errors or warnings and in order to check on it you can use the `jut jobs connect`
+command to reconnect to a running job and snoop on the output. 
 
-Luckily `jut` handles all of this with ease:
-
-```
-> jut upload data.json --dry-run \
-  --remove-fields email --anonymize-fields name --rename-fields date=time
-POST: [
-    {
-        "sha": "6908574bc2a0511084ee76f9e411bb9d", 
-        "message": "Oh this is not going go well...", 
-        "name": "0c33366cb1abf53c9200930210024b79", 
-        "time": "2015-08-28T06:24:29Z"
-    }
-]
-```
-Removing the `--dry-run` and you'll push your data up to Jut in a jiffy.
-
-### Uploading a directory of JSON files
-
-Instead of building this type of feature into jut-tools we felt it was easier
-for you to use your trusty command line tools like so:
+Lets say you were running a persistent program running 
 
 ```
-for I in `ls *.json`
-do
-    jut upload $I
-done
+jut run "read -type 'metric' name='cpu.idle' | reduce -every :hour: value=avg(value) | put name='cpu.idle.per.hour' | write -space 'collectd_rollups'" -p
+dcee7afa
 ```
+
+Notice we used the `-p` argument so that to persist the program and leave it
+running. This specific program is calculating 5 minute average rollups for
+`cpu.idle` metrics and writing them to our `collectd.rollup` space. Now lets say
+we were wondering if the job with the id `dcee7afa` was writing out any warnings
+or errors ? Well using the following we could snoop on the output like so:
+
+```
+jut jobs connect dcee7afa
+```
+
+And you'd now start seeing any error or warning messages. You won't see any 
+data points since the program ended with a `write` sink. If you really wanted
+to see points then you'd have to include a little debug trick like so in your
+program:
+
+```
+read -type 'metric' name='cpu.idle' | reduce -every :hour: value=avg(value) | put name='cpu.idle.per.hour' | ( write -space 'collectd_rollups' ; pass)
+```
+
+So your program would end with a splitting of the stream where one of them goes
+into a `write` while the other just passes through and pushes points back to a
+client that maybe listening for data.
 
 
 ## Run Command
@@ -336,6 +306,96 @@ Then you can run the high CPU usage juttle like so:
    ```
    jut run -f text examples/collectd_cpu_alert.juttle | xargs osascript -e 'display notification "%" with title "High CPU Usage"' 
    ```
+
+## Upload Command
+
+### Upload a JSON file
+
+To upload a JSON file containing multiple data points just use *jut* like
+so:
+
+```
+jut upload data.json [-space some-other-space]
+```
+
+The above will simply upload the data points contained in the JSON file to 
+the webhook connector listening on the default configuration.
+
+You can also pipe JSON data to *jut* and it will handle uploading points
+just fine:
+
+```
+curl 'https://api.github.com/repos/nodejs/node/issues?page=1&per_page=100&state=all' -o issues1.json | \
+jut upload
+```
+
+Would upload those last 100 issues returned from the github issues API for the
+*node* project.
+
+Using `--dry-run` you can easily see what data you would have actually uploaded
+and also how using additional options affects your data. Take for example the 
+following simple JSON data:
+
+```
+[
+  {
+    "sha": "6908574bc2a0511084ee76f9e411bb9d",
+    "name": "Rod The Dog",
+    "email": "rod@jut.io",
+    "date": "2015-08-28T06:24:29Z",
+    "message": "Oh this is not going go well..."
+  }
+]
+```
+
+You could simply use `--dry-run` to see what the data would look like: 
+
+```
+> jut upload --dry-run                                                                        
+POST: [
+    {
+        "date": "2015-08-28T06:24:29Z", 
+        "sha": "6908574bc2a0511084ee76f9e411bb9d", 
+        "message": "Oh this is not going go well...", 
+        "name": "Rod The Dog", 
+        "email": "rod@jut.io"
+    }
+]
+```
+
+Looking at that we realized we wanted to do a few things to our data points:
+
+ 1. remove the `email` field
+ 2. anonymize the `name` field
+ 3. rename `date` to the required `time` field
+
+Luckily `jut` handles all of this with ease:
+
+```
+> jut upload data.json --dry-run \
+  --remove-fields email --anonymize-fields name --rename-fields date=time
+POST: [
+    {
+        "sha": "6908574bc2a0511084ee76f9e411bb9d", 
+        "message": "Oh this is not going go well...", 
+        "name": "0c33366cb1abf53c9200930210024b79", 
+        "time": "2015-08-28T06:24:29Z"
+    }
+]
+```
+Removing the `--dry-run` and you'll push your data up to Jut in a jiffy.
+
+### Uploading a directory of JSON files
+
+Instead of building this type of feature into jut-tools we felt it was easier
+for you to use your trusty command line tools like so:
+
+```
+for I in `ls *.json`
+do
+    jut upload $I
+done
+```
 
 ## Development
 

@@ -6,18 +6,21 @@ data engine API
 import json
 import random
 import requests
+import socket
+import time
+import traceback
 
 from websocket import create_connection
 
 from jut import defaults
-from jut.api import auth, deployments
+from jut.api import deployments
 from jut.common import debug, is_debug_enabled
 from jut.exceptions import JutException
 
 
 def get_data_url(deployment_name,
                  endpoint_type='juttle',
-                 access_token=None,
+                 token_manager=None,
                  app_url=defaults.APP_URL):
     """
     get the data url for a specified endpoint_type, currently supported types
@@ -28,7 +31,7 @@ def get_data_url(deployment_name,
 
     """
     deployment_details = deployments.get_deployment_details(deployment_name,
-                                                            access_token=access_token,
+                                                            token_manager=token_manager,
                                                             app_url=app_url)
 
     # use a random juttle endpoint
@@ -46,7 +49,7 @@ def get_data_url(deployment_name,
 
 def get_data_urls(deployment_name,
                   endpoint_type='juttle',
-                  access_token=None,
+                  token_manager=None,
                   app_url=defaults.APP_URL):
     """
     get all of the data urls for a specified endpoint_type, currently supported types
@@ -57,7 +60,7 @@ def get_data_urls(deployment_name,
 
     """
     deployment_details = deployments.get_deployment_details(deployment_name,
-                                                            access_token=access_token,
+                                                            token_manager=token_manager,
                                                             app_url=app_url)
 
     # use a random juttle endpoint
@@ -74,7 +77,7 @@ def get_data_urls(deployment_name,
 
 
 def get_juttle_data_url(deployment_name,
-                        access_token=None,
+                        token_manager=None,
                         app_url=defaults.APP_URL):
     """
     return the juttle data url
@@ -83,10 +86,11 @@ def get_juttle_data_url(deployment_name,
     return get_data_url(deployment_name,
                         endpoint_type='juttle',
                         app_url=app_url,
-                        access_token=access_token)
+                        token_manager=token_manager)
+
 
 def get_import_data_url(deployment_name,
-                        access_token=None,
+                        token_manager=None,
                         app_url=defaults.APP_URL):
     """
     return the import data url
@@ -95,22 +99,173 @@ def get_import_data_url(deployment_name,
     return get_data_url(deployment_name,
                         endpoint_type='http-import',
                         app_url=app_url,
-                        access_token=access_token)
+                        token_manager=token_manager)
+
+
+def get_data_url_for_job(job_id,
+                         deployment_name,
+                         token_manager=None,
+                         app_url=defaults.APP_URL):
+    data_url = None
+    jobs = get_jobs(deployment_name,
+                    token_manager=token_manager,
+                    app_url=app_url)
+
+    for job in jobs:
+        if job['id'] == job_id:
+            data_url = job['data_url']
+            break
+
+    if data_url == None:
+        raise JutException('Unable to find job with id "%s"' % job_id)
+
+    return data_url
+
+def __wss_connect(data_url,
+                  token_manager,
+                  job_id=None):
+    """
+    Establish the websocket connection to the data engine. When job_id is
+    provided we're basically establishing a websocket to an existing
+    program that was already started using the jobs API
+
+    job_id: job id of a running program
+    """
+    url = '%s/api/v1/juttle/channel' % data_url.replace('https://', 'wss://')
+
+    token_obj = {
+        "accessToken": token_manager.get_access_token()
+    }
+
+    if job_id != None:
+        token_obj['job_id'] = job_id
+
+    if is_debug_enabled():
+        debug("connecting to %s", url)
+
+    websocket = create_connection(url)
+    websocket.settimeout(10)
+
+    if is_debug_enabled():
+        debug("sent %s", json.dumps(token_obj))
+
+    websocket.send(json.dumps(token_obj))
+    return websocket
+
+
+def connect_job(job_id,
+                deployment_name,
+                token_manager=None,
+                app_url=defaults.APP_URL,
+                persist=False,
+                websocket=None,
+                data_url=None):
+    """
+    Connect to a running Juttle program by job_id
+
+    """
+
+    if data_url == None:
+        data_url = get_data_url_for_job(job_id,
+                                        deployment_name,
+                                        token_manager=token_manager,
+                                        app_url=app_url)
+
+    if websocket == None:
+        websocket = __wss_connect(data_url,
+                                  token_manager,
+                                  job_id=job_id)
+
+    pong = json.dumps({
+        'pong': True
+    })
+
+    if not persist:
+        job_finished = False
+
+        while not job_finished:
+            try:
+                data = websocket.recv()
+
+                if data:
+                    payload = json.loads(data)
+
+                    if is_debug_enabled():
+                        printable_payload = dict(payload)
+                        if 'points' in payload:
+                            # don't want to print out all the outputs when in
+                            # debug mode
+                            del printable_payload['points']
+                            printable_payload['points'] = 'NOT SHOWN'
+
+                        debug('received %s' % json.dumps(printable_payload))
+
+                    if 'ping' in payload.keys():
+                        # ping/pong (ie heartbeat) mechanism
+                        websocket.send(pong)
+
+                        if is_debug_enabled():
+                            debug('sent %s' % json.dumps(pong))
+
+                    if 'job_end' in payload.keys() and payload['job_end'] == True:
+                        job_finished = True
+
+                    if token_manager.is_access_token_expired():
+                        debug('refreshing access token')
+                        token_obj = {
+                            "accessToken": token_manager.get_access_token()
+                        }
+                        # refresh authentication token
+                        websocket.send(json.dumps(token_obj))
+
+                    # return all channel messages
+                    yield payload
+
+                else:
+                    debug('payload was "%s", forcing websocket reconnect' % data)
+                    raise IOError()
+
+            except IOError:
+                if is_debug_enabled():
+                    traceback.print_exc()
+                #
+                # We'll retry for just under 30s since internally we stop
+                # running non persistent programs after 30s of client side
+                # websocket not being connected
+                #
+                retry = 1
+                while retry <= 5:
+                    try:
+                        debug('network error reconnecting to job %s, '
+                              'try %s of 5' % (job_id, retry))
+                        websocket = __wss_connect(data_url, token_manager, job_id=job_id)
+                        break
+
+                    except socket.error:
+
+                        if is_debug_enabled():
+                            traceback.print_exc()
+
+                        retry += 1
+                        time.sleep(5)
+
+                debug('network error reconnecting to job %s, '
+                      'try %s of 5' % (job_id, retry))
+                websocket = __wss_connect(data_url, token_manager, job_id=job_id)
+
+    websocket.close()
 
 
 def run(juttle,
         deployment_name,
         program_name=None,
-        persist=True,
-        access_token=None,
-        app_url=defaults.APP_URL,
-        reconnect=False):
+        persist=False,
+        token_manager=None,
+        app_url=defaults.APP_URL):
     """
     run a juttle program through the juttle streaming API and return the
-    the various events that are part of running a Juttle program which
-    include:
-        
-        
+    various events that are part of running a Juttle program which include:
+
         * Initial job status details including information to associate
           multiple flowgraphs with their individual outputs (sinks):
           {
@@ -179,26 +334,16 @@ def run(juttle,
              the background if it is uses a background output
              (http://docs.jut.io/juttle-guide/#background_outputs) and
              therefore becomes a persistent job.
-    access_token: valid access toke obtained using auth.get_access_token
+    token_manager: auth.TokenManager object
     app_url: optional argument used primarily for internal Jut testing
-    reconnect: attempt to reconnect the websocket if we get an error at
-               runtime
     """
-    headers = auth.access_token_to_headers(access_token)
+    headers = token_manager.get_access_token_headers()
 
     data_url = get_juttle_data_url(deployment_name,
                                    app_url=app_url,
-                                   access_token=access_token)
+                                   token_manager=token_manager)
 
-    url = '%s/api/v1/juttle/channel' % data_url.replace('https://', 'wss://')
-    token_obj = {"accessToken": access_token['access_token']}
-
-    if is_debug_enabled():
-        debug("connecting to %s", url)
-
-    websocket = create_connection(url)
-    websocket.settimeout(10)
-    websocket.send(json.dumps(token_obj))
+    websocket = __wss_connect(data_url, token_manager)
 
     data = websocket.recv()
     channel_id_obj = json.loads(data)
@@ -228,47 +373,32 @@ def run(juttle,
     # yield job_info so the caller to this method can figure out which sinks
     # correlate to which flowgraphs
     yield job_info
+    job_id = job_info['job']['id']
 
     if is_debug_enabled():
         debug('started job %s', json.dumps(job_info))
 
-    pong = json.dumps({
-        'pong': True
-    })
-
-    if not persist:
-        job_finished = False
-
-        while not job_finished:
-            data = json.loads(websocket.recv())
-
-            if is_debug_enabled():
-                debug('received %s' % json.dumps(data))
-
-            if 'ping' in data.keys():
-                # ping/pong (ie heartbeat) mechanism
-                websocket.send(pong)
-
-                if is_debug_enabled():
-                    debug('sent %s' % json.dumps(pong))
-
-            if 'job_end' in data.keys() and data['job_end'] == True:
-                job_finished = True
-
-            # return all channel messages
-            yield data
-
-    websocket.close()
+    for data in connect_job(job_id,
+                            deployment_name,
+                            token_manager=token_manager,
+                            app_url=app_url,
+                            persist=persist,
+                            websocket=websocket,
+                            data_url=data_url):
+        yield data
 
 
 def get_jobs(deployment_name,
-             access_token=None,
+             token_manager=None,
              app_url=defaults.APP_URL):
+    """
+    return list of currently running jobs
 
-    headers = auth.access_token_to_headers(access_token)
+    """
+    headers = token_manager.get_access_token_headers()
     data_urls = get_data_urls(deployment_name,
                               app_url=app_url,
-                              access_token=access_token)
+                              token_manager=token_manager)
 
     jobs = []
 
@@ -277,7 +407,14 @@ def get_jobs(deployment_name,
         response = requests.get(url, headers=headers)
 
         if response.status_code == 200:
-            jobs += response.json()['jobs']
+            # saving the data_url for the specific job so you know where to
+            # connect if you want to interact with that job
+            these_jobs = response.json()['jobs']
+
+            for job in these_jobs:
+                job['data_url'] = data_url
+
+            jobs += these_jobs
         else:
             raise JutException('Error %s: %s' % (response.status_code, response.text))
 
@@ -286,11 +423,15 @@ def get_jobs(deployment_name,
 
 def get_job_details(job_id,
                     deployment_name,
-                    access_token=None,
+                    token_manager=None,
                     app_url=defaults.APP_URL):
+    """
+    return job details for a specific job id
+
+    """
 
     jobs = get_jobs(deployment_name,
-                    access_token=access_token,
+                    token_manager=token_manager,
                     app_url=app_url)
 
     for job in jobs:
@@ -302,13 +443,17 @@ def get_job_details(job_id,
 
 def delete_job(job_id,
                deployment_name,
-               access_token=None,
+               token_manager=None,
                app_url=defaults.APP_URL):
+    """
+    delete a job with a specific job id
 
-    headers = auth.access_token_to_headers(access_token)
-    data_url = get_juttle_data_url(deployment_name,
-                                   app_url=app_url,
-                                   access_token=access_token)
+    """
+    headers = token_manager.get_access_token_headers()
+    data_url = get_data_url_for_job(job_id,
+                                    deployment_name,
+                                    token_manager=token_manager,
+                                    app_url=app_url)
 
     url = '%s/api/v1/jobs/%s' % (data_url, job_id)
     response = requests.delete(url, headers=headers)
