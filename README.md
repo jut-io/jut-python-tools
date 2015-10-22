@@ -24,11 +24,8 @@ Command line tools for interacting with your Jut instance.
   * [Upload Command](#upload-command)
     * [Upload a JSON file](#upload-a-json-file)
     * [Uploading a directory of JSON files](#uploading-a-directory-of-json-files)
-  * [Jut Python API](#jut-python-api)
-    * [Auth API](#auth-api)
-    * [Accounts API](#accounts-api)
-    * [Deployments API](#deployments-api)
-    * [Data Engine API](#data-engine-api)
+  * [Programs Command](#programs-command)
+    * [Pull all your programs](#pull-all-your-programs)
   * [Development](#development)
     * [Running Tests](#running-tests)
     * [Running a specific test](#running-a-specific-test)
@@ -171,7 +168,7 @@ read -type 'metric' name='cpu.idle' | reduce -every :hour: value=avg(value) | pu
 
 So your program would end with a splitting of the stream where one of them goes
 into a `write` while the other just passes through and pushes points back to a
-client that maybe listening for data.
+client that may be listening for data.
 
 
 ## Run Command
@@ -403,57 +400,28 @@ do
 done
 ```
 
-## Jut Python API
+## Programs Command
+
+### Pull all your programs
+
+This is quite simple and can be achieved by pulling all of your programs into
+a single directory like so (make sure to use admin user to pull ALL of your
+programs, otherwise you'll only pull your users programs):
+
+```
+jut programs pull local_directory --all
+```
+
+Which would dump each program into its own file with the name of the program 
+followed by the `.juttle.` extension. 
+
+If on the other hand you wanted to break up the programs per user into their own
+directory then supply the `--per-user-directory` like so:
+
+```
+jut programs pull local_directory --all --per-user-directory
+```
  
-Bundled with the **jut-tools** is also the Jut Python API modules that you can 
-use to easily interact with various Jut API's. The following sections will cover
-a few examples of using the available modules.
-
-### Auth API
-
-The first thing you have to be able to do before you can interact with the Jut 
-APIs is to authenticate with the Jut system. This can be easily done like so:
-
-```python
-from jut.apis import auth
-
-token_manager = auth.TokenManager(username='john',password='doe')
-```
-
-The *token_manager* object can now be passed to various other APIs and will 
-handle providing the necessary authentication tokens at runtime as well as
-refreshing that token periodically as authentication tokens expire.
-
-### Accounts API
-
-The **Accounts API** is where you can create, delete and check details of an 
-existing user. Here are a few examples of using the **Accounts API**:
-
-```python
-from jut.apis import auth, accounts
-
-token_manager = auth.TokenManager(username='john',password='doe')
-
-# create a new user
-account_details = accounts.create_user('New Guy',
-                                       'new',
-                                       'newguy@company.com',
-                                       'super-secret-password',
-                                       token_manager=token_manager)
-
-# delete an account (only user can delete him/herself)
-accounts.delete_user('joe', token_manager=token_manager)
-```
-
-### Deployments API
-
-
-
-### Data Engine API
-
-
-## Development
-
 
 ### Running Tests
 

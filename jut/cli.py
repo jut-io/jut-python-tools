@@ -9,7 +9,7 @@ import traceback
 
 from jut import defaults, config
 
-from jut.commands import configs, jobs, run, upload
+from jut.commands import configs, jobs, programs, run, upload
 
 from jut.common import error, is_debug_enabled
 from jut.exceptions import JutException
@@ -169,6 +169,87 @@ def main():
                              help='available formats are json, text, csv with '
                                   'default: json')
 
+    # programs commands
+    programs_parser = commands.add_parser('programs',
+                                          help='programs management')
+
+    programs_commands = programs_parser.add_subparsers(dest='programs_subcommand')
+
+    list_programs = programs_commands.add_parser('list',
+                                                 help='list programs')
+
+    list_programs.add_argument('-d', '--deployment',
+                               default=None,
+                               help='specify the deployment name')
+
+    list_programs.add_argument('-a', '--app-url',
+                               default=defaults.APP_URL,
+                               help='app url (default: https://app.jut.io INTERNAL USE)')
+
+    list_programs.add_argument('-f', '--format',
+                               default='table',
+                               help='available formats are text, table with '
+                                    'default: table')
+
+    list_programs.add_argument('--all',
+                               default=False,
+                               help='list all programs, default is to list your'
+                                    ' own programs')
+
+    run_programs = programs_commands.add_parser('run',
+                                                help='run a program in your local browser')
+
+    run_programs.add_argument('program_name',
+                              help='specify the program name you wish to kick off')
+
+
+    pull_programs = programs_commands.add_parser('pull',
+                                                 help='pull programs')
+
+    pull_programs.add_argument('directory',
+                               help='directory to pull remote programs into')
+
+    pull_programs.add_argument('-d', '--deployment',
+                               default=None,
+                               help='specify the deployment name')
+
+    pull_programs.add_argument('-a', '--app-url',
+                               default=defaults.APP_URL,
+                               help='app url (default: https://app.jut.io INTERNAL USE)')
+
+    pull_programs.add_argument('-p', '--per-user-directory',
+                               action='store_true',
+                               default=False,
+                               help='save the programs per user into a '
+                                    'separate directory')
+
+    pull_programs.add_argument('--all',
+                               action='store_true',
+                               default=False,
+                               help='pull all programs, default is to list your'
+                                    ' own programs')
+
+    push_programs = programs_commands.add_parser('push',
+                                                 help='push programs')
+
+    push_programs.add_argument('directory',
+                               help='directory to pick up programs to push to '
+                                    'the running Jut instance')
+
+    push_programs.add_argument('-d', '--deployment',
+                               default=None,
+                               help='specify the deployment name')
+
+    push_programs.add_argument('-a', '--app-url',
+                               default=defaults.APP_URL,
+                               help='app url (default: https://app.jut.io INTERNAL USE)')
+
+    push_programs.add_argument('--all',
+                               default=False,
+                               help='pull all programs, default is to list your'
+                                    ' own programs')
+
+
     # upload commands
     upload_parser = commands.add_parser('upload',
                                         help='upload local JSON file(s) to Jut')
@@ -298,15 +379,37 @@ def main():
             elif options.config_subcommand == 'defaults':
                 configs.change_defaults(options)
 
+            else:
+                raise Exception('Unexpected config subcommand "%s"' % options.command)
+
         elif options.subcommand == 'jobs':
             if options.jobs_subcommand == 'list':
                 jobs.list(options)
 
             elif options.jobs_subcommand == 'kill':
                 jobs.kill(options)
-            
+
             elif options.jobs_subcommand == 'connect':
                 jobs.connect(options)
+
+            else:
+                raise Exception('Unexpected jobs subcommand "%s"' % options.command)
+
+        elif options.subcommand == 'programs':
+            if options.programs_subcommand == 'list':
+                programs.list(options)
+
+            elif options.programs_subcommand == 'pull':
+                programs.pull(options)
+
+            elif options.programs_subcommand == 'push':
+                programs.push(options)
+            
+            elif options.programs_subcommand == 'run':
+                programs.run(options)
+
+            else:
+                raise Exception('Unexpected programs subcommand "%s"' % options.command)
 
         elif options.subcommand == 'upload':
             upload.upload_file(options)

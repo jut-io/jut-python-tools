@@ -93,6 +93,16 @@ def get_logged_in_account(token_manager=None,
     get the account details for logged in account of the auth token_manager
 
     """
+    return get_logged_in_account(token_manager=token_manager,
+                                 app_url=app_url)['id']
+
+
+def get_logged_in_account(token_manager=None,
+                          app_url=defaults.APP_URL):
+    """
+    get the account details for credentials provided
+
+    """
     headers = token_manager.get_access_token_headers()
     auth_url = environment.get_auth_url(app_url=app_url)
     url = "%s/api/v1/account" % auth_url
