@@ -218,6 +218,10 @@ def connect_job(job_id,
                         # refresh authentication token
                         websocket.send(json.dumps(token_obj))
 
+                    if 'error' in payload:
+                        if payload['error'] == 'NONEXISTENT-JOB':
+                            raise JutException('Job "%s" no longer running' % job_id)
+
                     # return all channel messages
                     yield payload
 
