@@ -13,6 +13,32 @@ from jut.exceptions import JutException
 
 ## deployments
 
+def create_deployment(deployment_name,
+                      token_manager=None,
+                      app_url=defaults.APP_URL):
+    """
+    create a deployment with the specified name
+
+    """
+    headers = token_manager.get_access_token_headers()
+
+    payload = {
+        'name': deployment_name,
+        'isAdmin': True
+    }
+
+    deployment_url = environment.get_deployment_url(app_url=app_url)
+    response = requests.post('%s/api/v1/deployments' % deployment_url,
+                             data=json.dumps(payload),
+                             headers=headers)
+
+    if response.status_code == 201:
+        return response.json()
+
+    else:
+        raise JutException('Error %s: %s' % (response.status_code, response.text))
+
+
 def get_deployments(token_manager=None,
                     app_url=defaults.APP_URL):
     """

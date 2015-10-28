@@ -87,10 +87,10 @@ def get_account_id(username,
         raise JutException('Error %s; %s' % (response.status_code, response.text))
 
 
-def get_logged_in_account_id(token_manager=None,
-                             app_url=defaults.APP_URL):
+def get_logged_in_account(token_manager=None,
+                          app_url=defaults.APP_URL):
     """
-    get the account id for logged in account of the provided access_token
+    get the account details for logged in account of the auth token_manager
 
     """
     headers = token_manager.get_access_token_headers()
@@ -101,11 +101,20 @@ def get_logged_in_account_id(token_manager=None,
                             headers=headers)
 
     if response.status_code == 200:
-        return response.json()['id']
+        return response.json()
 
     else:
         raise JutException('Error %s; %s' % (response.status_code, response.text))
 
+
+def get_logged_in_account_id(token_manager=None,
+                             app_url=defaults.APP_URL):
+    """
+    get the account id for logged in account of the provided access_token
+
+    """
+    return get_logged_in_account(token_manager=token_manager,
+                                 app_url=app_url)['id']
 
 
 def user_exists(username,
@@ -148,5 +157,4 @@ def get_accounts(account_ids,
 
     else:
         raise JutException('Error %s; %s' % (response.status_code, response.text))
-
 
