@@ -39,12 +39,12 @@ class JutConfigTests(unittest.TestCase):
     def setUpClass(cls):
         create_user_in_default_deployment('Jut Tools User #1',
                                           'jut-tools-user01',
-                                          'jut-tools-user01%s@jut-tools.test',
+                                          'jut-tools-user01@jut.io',
                                           'bigdata')
 
         create_user_in_default_deployment('Jut Tools User #2',
                                           'jut-tools-user02',
-                                          'jut-tools-user02%s@jut-tools.test',
+                                          'jut-tools-user02@jutt.io',
                                           'bigdata')
 
 

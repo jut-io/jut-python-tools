@@ -26,17 +26,17 @@ class JutJobsTests(unittest.TestCase):
     def setUpClass(cls):
         create_user_in_default_deployment('Jut Tools User #1',
                                           'jut-tools-user01',
-                                          'jut-tools-user01%s@jut-tools.test',
+                                          'jut-tools-user01@jut.io',
                                           'bigdata')
 
         create_user_in_default_deployment('Jut Tools User #2',
                                           'jut-tools-user02',
-                                          'jut-tools-user02%s@jut-tools.test',
+                                          'jut-tools-user02@jut.io',
                                           'bigdata')
 
         create_user_in_default_deployment('Jut Tools User #3',
                                           'jut-tools-user03',
-                                          'jut-tools-user03%s@jut-tools.test',
+                                          'jut-tools-user03@jut.io',
                                           'bigdata')
 
         create_space_in_default_deployment(JutJobsTests.test_space)
