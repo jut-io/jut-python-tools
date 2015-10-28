@@ -44,7 +44,7 @@ class JutConfigTests(unittest.TestCase):
 
         create_user_in_default_deployment('Jut Tools User #2',
                                           'jut-tools-user02',
-                                          'jut-tools-user02@jutt.io',
+                                          'jut-tools-user02@jut.io',
                                           'bigdata')
 
 
