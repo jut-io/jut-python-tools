@@ -1,5 +1,7 @@
 # jut-tools
 
+[![Build Status](https://travis-ci.org/jut-io/jut-python-tools.svg)](https://travis-ci.org/jut-io/jut-python-tools)
+
 Command line tools for interacting with your Jut instance.  
 
 # Table of Contents
