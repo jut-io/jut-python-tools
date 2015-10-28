@@ -23,10 +23,6 @@ setup(
     ],
 
     test_suite='tests',
-    tests_install=[
-        'sh==1.11'
-    ],
-
     keywords=[''],
 
     packages=find_packages(exclude=['tests']),
