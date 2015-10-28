@@ -155,13 +155,14 @@ class JutConfigTests(unittest.TestCase):
 
         with temp_jut_tools_home() as home_dir:
             jut_user = os.environ.get('JUT_USER')
+            jut_pass = os.environ.get('JUT_PASS')
             configuration = config.get_default()
             app_url = configuration['app_url']
 
             process = jut('config',
                           'add',
                           '-u', jut_user,
-                          '-p', 'bigdata',
+                          '-p', jut_pass,
                           '-a', app_url)
             process.expect_status(0)
 
@@ -207,13 +208,14 @@ class JutConfigTests(unittest.TestCase):
 
         with temp_jut_tools_home() as home_dir:
             jut_user = os.environ.get('JUT_USER')
+            jut_pass = os.environ.get('JUT_PASS')
             configuration = config.get_default()
             app_url = configuration['app_url']
 
             process = jut('config',
                           'add',
                           '-u', jut_user,
-                          '-p', 'bigdata',
+                          '-p', jut_pass,
                           '-a', app_url)
             process.expect_status(0)
 
@@ -255,13 +257,14 @@ class JutConfigTests(unittest.TestCase):
 
         with temp_jut_tools_home():
             jut_user = os.environ.get('JUT_USER')
+            jut_pass = os.environ.get('JUT_PASS')
             configuration = config.get_default()
             app_url = configuration['app_url']
 
             process = jut('config',
                           'add',
                           '-u', jut_user,
-                          '-p', 'bigdata',
+                          '-p', jut_pass,
                           '-a', app_url)
             process.expect_status(0)
 
@@ -303,13 +306,14 @@ class JutConfigTests(unittest.TestCase):
 
         with temp_jut_tools_home():
             jut_user = os.environ.get('JUT_USER')
+            jut_pass = os.environ.get('JUT_PASS')
             configuration = config.get_default()
             app_url = configuration['app_url']
 
             process = jut('config',
                           'add',
                           '-u', jut_user,
-                          '-p', 'bigdata',
+                          '-p', jut_pass,
                           '-a', app_url)
             process.expect_status(0)
 
@@ -365,13 +369,14 @@ class JutConfigTests(unittest.TestCase):
 
         with temp_jut_tools_home():
             jut_user = os.environ.get('JUT_USER')
+            jut_pass = os.environ.get('JUT_PASS')
             configuration = config.get_default()
             app_url = configuration['app_url']
 
             process = jut('config',
                           'add',
                           '-u', jut_user,
-                          '-p', 'bigdata',
+                          '-p', jut_pass,
                           '-a', app_url)
             process.expect_status(0)
 
