@@ -87,8 +87,10 @@ def add_configuration(options):
                                       password=password,
                                       app_url=app_url)
 
-    client_id, client_secret = authorizations.get_authorization(token_manager,
-                                                                app_url=app_url)
+    authorization = authorizations.get_authorization(token_manager,
+                                                     app_url=app_url)
+    client_id = authorization['client_id']
+    client_secret = authorization['client_secret']
 
     deployment_name = default_deployment(app_url,
                                          client_id,

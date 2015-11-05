@@ -161,7 +161,7 @@ def connect_job(job_id,
                 websocket=None,
                 data_url=None):
     """
-    Connect to a running Juttle program by job_id
+    connect to a running Juttle program by job_id
 
     """
 
@@ -234,8 +234,8 @@ def connect_job(job_id,
                     traceback.print_exc()
                 #
                 # We'll retry for just under 30s since internally we stop
-                # running non persistent programs after 30s of client side
-                # websocket not being connected
+                # running non persistent programs after 30s of not heartbeating
+                # with the client
                 #
                 retry = 1
                 while retry <= 5:

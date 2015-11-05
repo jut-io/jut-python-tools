@@ -39,6 +39,13 @@ def temp_jut_tools_home():
     finally:
         os.environ['HOME_OVERRIDE'] = home_override
 
+def get_test_user_pass():
+    return os.environ.get('JUT_USER'), os.environ.get('JUT_PASS')
+
+
+def get_test_app_url():
+    return os.environ.get('JUT_APP_URL')
+
 
 class Spawn(object):
     """

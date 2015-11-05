@@ -16,8 +16,7 @@ Command line tools for interacting with your Jut instance.
   * [Jobs Command](#jobs-command)
     * [Check which jobs are running](#check-which-jobs-are-running)
     * [Kill a running job](#kill-a-running-job)
-    * [Connect to a persisten job](#connect-to-a-persistent-job)
-  * [Run Command](#run-command)
+    * [Connect to a persisten job](#connect-to-a-persistent-job) * [Run Command](#run-command)
     * [Getting JSON data out of Jut](#getting-json-data-out-of-jut)
     * [Getting a list of things out of Jut](#getting-a-list-of-things-out-of-jut)
     * [Reconstructing log lines from all your hosts with Jut](#reconstructing-log-lines-from-all-your-hosts-with-jut)
@@ -25,6 +24,11 @@ Command line tools for interacting with your Jut instance.
   * [Upload Command](#upload-command)
     * [Upload a JSON file](#upload-a-json-file)
     * [Uploading a directory of JSON files](#uploading-a-directory-of-json-files)
+  * [Jut Python API](#jut-python-api)
+    * [Auth API](#auth-api)
+    * [Accounts API](#accounts-api)
+    * [Deployments API](#deployments-api)
+    * [Data Engine API](#data-engine-api)
   * [Development](#development)
     * [Running Tests](#running-tests)
     * [Running a specific test](#running-a-specific-test)
@@ -399,7 +403,57 @@ do
 done
 ```
 
+## Jut Python API
+ 
+Bundled with the **jut-tools** is also the Jut Python API modules that you can 
+use to easily interact with various Jut API's. The following sections will cover
+a few examples of using the available modules.
+
+### Auth API
+
+The first thing you have to be able to do before you can interact with the Jut 
+APIs is to authenticate with the Jut system. This can be easily done like so:
+
+```python
+from jut.apis import auth
+
+token_manager = auth.TokenManager(username='john',password='doe')
+```
+
+The *token_manager* object can now be passed to various other APIs and will 
+handle providing the necessary authentication tokens at runtime as well as
+refreshing that token periodically as authentication tokens expire.
+
+### Accounts API
+
+The **Accounts API** is where you can create, delete and check details of an 
+existing user. Here are a few examples of using the **Accounts API**:
+
+```python
+from jut.apis import auth, accounts
+
+token_manager = auth.TokenManager(username='john',password='doe')
+
+# create a new user
+account_details = accounts.create_user('New Guy',
+                                       'new',
+                                       'newguy@company.com',
+                                       'super-secret-password',
+                                       token_manager=token_manager)
+
+# delete an account (only user can delete him/herself)
+accounts.delete_user('joe', token_manager=token_manager)
+```
+
+### Deployments API
+
+
+
+### Data Engine API
+
+
 ## Development
+
 
 ### Running Tests
 
