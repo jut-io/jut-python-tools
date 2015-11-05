@@ -41,4 +41,3 @@ def get_deployment_url(app_url=defaults.APP_URL):
     """
     return get_details(app_url=app_url)['deployment_url']
 
-
